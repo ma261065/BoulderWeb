@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boulder - Web Version</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <h1>Boulder</h1>
+    
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <div id="info-panel">
+            <div id="level-info">Level: 1</div>
+            <div id="diamonds-info">Diamonds: 0/10</div>
+            <div id="time-info">Time: 120</div>
+        </div>
+        
+        <button id="sound-toggle">Sound: ON</button>
+    </div>
+    
+    <div id="controls">
+        <p>Controls: Use arrow keys to move</p>
+    </div>
+    
+    <!-- Load scripts in the correct order -->
+    <!-- First, load constants and base classes -->
+    <script src="js/constants.js"></script>
+    <script src="js/entities/entity.js"></script>
+    
+    <!-- Next, load entity classes that depend on the base entity class -->
+    <script src="js/entities/wall.js"></script>
+    <script src="js/entities/dirt.js"></script>
+    <script src="js/entities/boulder.js"></script>
+    <script src="js/entities/diamond.js"></script>
+    <script src="js/entities/player.js"></script>
+    <script src="js/entities/exit.js"></script>
+    
+    <!-- Then load the game systems in the correct dependency order -->
+    <script src="js/systems/sprite-manager.js"></script>
+    <script src="js/systems/sound-manager.js"></script>
+    <script src="js/systems/renderer.js"></script>
+    <script src="js/systems/level-manager.js"></script>
+    <script src="js/systems/input-manager.js"></script>
+    
+    <!-- Finally, load the main game script and initialize the game -->
+    <script src="js/game.js"></script>
+    <script>
+        // Initialize the game when the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM fully loaded, initializing game...');
+            // Create a global game instance
+            window.gameInstance = new Game();
+        });
+    </script>
+</body>
+</html>
