@@ -1,0 +1,54 @@
+body {
+    background-color: #333;
+    margin: 0;
+    padding: 20px;
+    font-family: Arial, sans-serif;
+    color: white;
+    text-align: center;
+}
+
+#game-container {
+    margin: 0 auto;
+    position: relative;
+}
+
+canvas {
+    border: 2px solid #555;
+    background-color: black;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+
+#info-panel {
+    margin-top: 10px;
+    display: flex;
+    justify-content: space-between;
+    max-width: 800px;
+    margin: 10px auto;
+    background-color: #222;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+#level-info, #diamonds-info, #time-info {
+    font-size: 18px;
+}
+
+#controls {
+    margin-top: 20px;
+    color: #aaa;
+}
+
+#sound-toggle {
+    margin-top: 10px;
+    background-color: #555;
+    border: none;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+#sound-toggle:hover {
+    background-color: #666;
+}
