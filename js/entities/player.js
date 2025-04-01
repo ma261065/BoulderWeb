@@ -13,9 +13,9 @@ class Player extends Entity {
         if (window.spriteManager && window.spriteManager.getSprite('player')) {
             ctx.drawImage(window.spriteManager.getSprite('player'), x, y, TILE_SIZE, TILE_SIZE);
         } else {
-            // Fallback to drawing a rectangle
+            // Fallback to drawing a rectangle with smaller margins
             ctx.fillStyle = '#FF0000';
-            ctx.fillRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+            ctx.fillRect(x + 1, y + 1, TILE_SIZE - 2, TILE_SIZE - 2);
         }
     }
     
@@ -68,24 +68,27 @@ class Player extends Entity {
             soundManager.playSound('move');
         } else if (destType === ENTITY_TYPES.DIRT) {
             soundManager.playSound('dig');
-            // Remove the dirt entity from level manager's entity instances
-            game.levelManager.removeEntityAtPosition(newX, newY);
+            // The grid is the source of truth - just update it
+            // The entity list will be synchronized in the game update
         } else if (destType === ENTITY_TYPES.DIAMOND) {
             soundManager.playSound('diamond');
             game.collectDiamond();
-            // Remove the diamond entity from level manager's entity instances
-            game.levelManager.removeEntityAtPosition(newX, newY);
+            // The grid is the source of truth - just update it
+            // The entity list will be synchronized in the game update
         } else if (destType === ENTITY_TYPES.EXIT) {
             soundManager.playSound('levelComplete');
             game.levelComplete();
             return true;
         }
         
-        // Update grid
+        // Update grid - this is the source of truth
         grid[this.y][this.x] = ENTITY_TYPES.EMPTY;
         this.x = newX;
         this.y = newY;
         grid[this.y][this.x] = this.type;
+        
+        // Force immediate entity sync to avoid visual glitches
+        game.syncEntitiesWithGrid();
         
         return true;
     }

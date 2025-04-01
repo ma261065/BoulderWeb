@@ -1,9 +1,17 @@
 class SpriteManager {
     constructor() {
+        console.log('Initializing sprite manager...');
         this.sprites = {};
         this.loaded = false;
+        this.isLoaded = false; // Used to check if sprites are loaded
         this.totalSprites = Object.keys(SPRITE_PATHS).length;
         this.loadedSprites = 0;
+        
+        // Load sprites
+        this.loadSprites(() => {
+            console.log('All sprites loaded.');
+            this.isLoaded = true;
+        });
     }
     
     loadSprites(callback) {
@@ -12,6 +20,7 @@ class SpriteManager {
         // Load each sprite
         for (const [name, path] of Object.entries(SPRITE_PATHS)) {
             const img = new Image();
+            
             img.onload = () => {
                 this.loadedSprites++;
                 console.log(`Loaded sprite: ${name} (${this.loadedSprites}/${this.totalSprites})`);
@@ -19,6 +28,7 @@ class SpriteManager {
                 if (this.loadedSprites === this.totalSprites) {
                     console.log('All sprites loaded!');
                     this.loaded = true;
+                    this.isLoaded = true;
                     if (callback) callback();
                 }
             };
@@ -46,12 +56,13 @@ class SpriteManager {
                 ctx.fillStyle = color;
                 
                 // Boulders and diamonds are circles, others are rectangles
+                // Use smaller margins for smaller tile size
                 if (name === 'boulder' || name === 'diamond') {
                     ctx.beginPath();
-                    ctx.arc(TILE_SIZE/2, TILE_SIZE/2, TILE_SIZE/2 - 4, 0, Math.PI * 2);
+                    ctx.arc(TILE_SIZE/2, TILE_SIZE/2, TILE_SIZE/2 - 2, 0, Math.PI * 2);
                     ctx.fill();
                 } else {
-                    ctx.fillRect(2, 2, TILE_SIZE - 4, TILE_SIZE - 4);
+                    ctx.fillRect(1, 1, TILE_SIZE - 2, TILE_SIZE - 2);
                 }
                 
                 this.sprites[name] = canvas;
@@ -60,20 +71,18 @@ class SpriteManager {
                 if (this.loadedSprites === this.totalSprites) {
                     console.log('All sprites loaded (some with fallbacks)!');
                     this.loaded = true;
+                    this.isLoaded = true;
                     if (callback) callback();
                 }
             };
             
             img.src = path;
             this.sprites[name] = img;
+            console.log(`Started loading sprite: ${name} from ${path}`);
         }
     }
     
     getSprite(name) {
         return this.sprites[name];
-    }
-    
-    isLoaded() {
-        return this.loaded;
     }
 }

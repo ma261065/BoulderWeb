@@ -124,8 +124,9 @@ class LevelManager {
             entity.type === ENTITY_TYPES.BOULDER || entity.type === ENTITY_TYPES.DIAMOND);
     }
     
-    // Remove an entity at a specific position
+    // Improved version of removeEntityAtPosition
     removeEntityAtPosition(x, y) {
+        // First try to find the entity by position and type (dirt or diamond)
         const index = this.entityInstances.findIndex(entity => 
             entity.x === x && entity.y === y && 
             (entity.type === ENTITY_TYPES.DIRT || entity.type === ENTITY_TYPES.DIAMOND));
@@ -134,6 +135,17 @@ class LevelManager {
             this.entityInstances.splice(index, 1);
             return true;
         }
+        
+        // If not found, try again with just position (any entity type)
+        const indexAny = this.entityInstances.findIndex(entity => 
+            entity.x === x && entity.y === y && 
+            entity.type !== ENTITY_TYPES.PLAYER); // Don't remove player
+            
+        if (indexAny !== -1) {
+            this.entityInstances.splice(indexAny, 1);
+            return true;
+        }
+        
         return false;
     }
     
@@ -148,5 +160,15 @@ class LevelManager {
             return true;
         }
         return false;
+    }
+    
+    // Debug method to print entity count
+    debugEntityCount() {
+        const counts = {};
+        this.entityInstances.forEach(entity => {
+            const typeName = Object.keys(ENTITY_TYPES).find(key => ENTITY_TYPES[key] === entity.type) || 'Unknown';
+            counts[typeName] = (counts[typeName] || 0) + 1;
+        });
+        console.log('Entity count:', counts, 'Total:', this.entityInstances.length);
     }
 }

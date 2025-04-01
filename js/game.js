@@ -17,18 +17,17 @@ class Game {
         
         // Systems - initialize in the correct order
         this.soundManager = new SoundManager();
+        
+        // Load sprites first
+        console.log('Creating sprite manager...');
+        window.spriteManager = new SpriteManager();
+        
         this.renderer = new Renderer(this);
         this.levelManager = new LevelManager(this);
         this.inputManager = new InputManager(this);
         
-        // Create a global sprite manager
-        window.spriteManager = new SpriteManager();
-        
-        // Load sprites first, then initialize the game
-        window.spriteManager.loadSprites(() => {
-            console.log('Sprites loaded, initializing game...');
-            this.init();
-        });
+        // Initialize the game
+        this.init();
     }
     
     init() {
@@ -109,10 +108,72 @@ class Game {
             somethingChanged = true;
         }
         
+        // Sync entity list with grid - ensures consistency
+        this.syncEntitiesWithGrid();
+        
         // Redraw if something changed
         if (somethingChanged) {
             this.renderer.drawGame();
         }
+    }
+    
+    // Method to ensure entities match grid state
+    syncEntitiesWithGrid() {
+        // Create a copy of entity instances
+        const entitiesToKeep = [];
+        
+        // Add player first - player is always needed
+        if (this.player) {
+            entitiesToKeep.push(this.player);
+        }
+        
+        // Iterate through grid and build entity list
+        for (let y = 0; y < GRID_HEIGHT; y++) {
+            for (let x = 0; x < GRID_WIDTH; x++) {
+                const tileType = this.grid[y][x];
+                
+                // Skip empty tiles and player (already added)
+                if (tileType === ENTITY_TYPES.EMPTY || 
+                    (tileType === ENTITY_TYPES.PLAYER && this.player && this.player.x === x && this.player.y === y)) {
+                    continue;
+                }
+                
+                // Find or create entity for this tile
+                const existingEntity = this.levelManager.entityInstances.find(e => 
+                    e.x === x && e.y === y && e.type === tileType && e !== this.player);
+                
+                if (existingEntity) {
+                    entitiesToKeep.push(existingEntity);
+                } else {
+                    // Create a new entity if needed
+                    let newEntity = null;
+                    switch (tileType) {
+                        case ENTITY_TYPES.WALL:
+                            newEntity = new Wall(x, y);
+                            break;
+                        case ENTITY_TYPES.DIRT:
+                            newEntity = new Dirt(x, y);
+                            break;
+                        case ENTITY_TYPES.BOULDER:
+                            newEntity = new Boulder(x, y);
+                            break;
+                        case ENTITY_TYPES.DIAMOND:
+                            newEntity = new Diamond(x, y);
+                            break;
+                        case ENTITY_TYPES.EXIT:
+                            newEntity = new Exit(x, y);
+                            break;
+                    }
+                    
+                    if (newEntity) {
+                        entitiesToKeep.push(newEntity);
+                    }
+                }
+            }
+        }
+        
+        // Replace entity instances with synchronized list
+        this.levelManager.entityInstances = entitiesToKeep;
     }
     
     updateTimer() {
