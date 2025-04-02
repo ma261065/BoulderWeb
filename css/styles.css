@@ -1,64 +1,69 @@
 body {
     background-color: #333;
     margin: 0;
-    padding: 10px;
+    padding: 0;
     font-family: Arial, sans-serif;
     color: white;
     text-align: center;
+    /* Prevent scrollbars at all costs */
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
 }
 
-canvas {
-    display: block;
-    margin: 0 auto;
-    background-color: black;
-    border: 2px solid #555;
-    
-    /* Prevent distortion */
-    image-rendering: pixelated;
-    image-rendering: -moz-crisp-edges;
-    image-rendering: crisp-edges;
-    
-    /* Responsive behavior */
-    width: auto;
-    height: auto;
-    max-width: 100%;
-    max-height: 70vh; /* Limit height to 70% of viewport height */
-    
-    /* Force browser to respect dimensions */
-    object-fit: contain;
+h1 {
+    margin: 10px 0;
+    font-size: 24px;
 }
 
 #game-container {
     margin: 0 auto;
     position: relative;
-    max-width: 100%;
     width: 100%;
-    padding-bottom: 80px; /* Space for controls */
-    overflow: hidden; /* Prevent scrollbars */
+    /* Use flexbox to center canvas */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* Don't set a specific height - let it adapt */
+}
+
+canvas {
+    display: block;
+    background-color: black;
+    border: 2px solid #555;
+    
+    /* No percentage sizing - canvas size is set in JS */
+    
+    /* Prevent distortion */
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
 }
 
 #info-panel {
-    margin-top: 10px;
+    width: 100%;
+    margin: 5px auto;
     display: flex;
     justify-content: space-between;
-    max-width: 100%;
-    margin: 10px auto;
     background-color: #222;
-    padding: 10px;
+    padding: 5px;
     border-radius: 5px;
+    box-sizing: border-box;
 }
 
 #level-info, #diamonds-info, #time-info {
-    font-size: 18px;
+    font-size: 16px;
+    padding: 0 5px;
 }
 
 #controls {
-    margin-top: 20px;
+    margin-top: 10px;
     color: #aaa;
+    font-size: 14px;
 }
 
 #sound-toggle {
-    margin-top: 10px;
+    margin-top: 5px;
     background-color: #555;
     border: none;
     color: white;
@@ -74,20 +79,20 @@ canvas {
 /* Touch controls styling */
 #touch-controls {
     position: absolute;
-    bottom: 20px;
+    bottom: 10px;
     left: 0;
     right: 0;
     display: flex;
     justify-content: center;
-    padding: 10px;
+    padding: 5px;
     background-color: rgba(0,0,0,0.5);
     z-index: 10;
 }
 
 #touch-controls button {
-    margin: 0 10px;
-    padding: 10px 15px;
-    font-size: 16px;
+    margin: 0 5px;
+    padding: 8px 12px;
+    font-size: 14px;
     background-color: rgba(255,255,255,0.2);
     color: white;
     border: 1px solid rgba(255,255,255,0.5);
@@ -97,4 +102,31 @@ canvas {
 
 #touch-controls button:active {
     background-color: rgba(255,255,255,0.4);
+}
+
+/* Media queries for responsive design */
+@media (max-height: 600px) {
+    h1 {
+        font-size: 18px;
+        margin: 5px 0;
+    }
+    
+    #info-panel {
+        padding: 2px;
+        margin: 2px auto;
+    }
+    
+    #level-info, #diamonds-info, #time-info {
+        font-size: 14px;
+    }
+    
+    #controls {
+        margin-top: 5px;
+        font-size: 12px;
+    }
+    
+    #sound-toggle {
+        padding: 3px 8px;
+        font-size: 12px;
+    }
 }

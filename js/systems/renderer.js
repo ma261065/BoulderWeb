@@ -1,112 +1,94 @@
+// Updated Renderer class with fixed vertical handling
+
 class Renderer {
     constructor(game) {
         this.game = game;
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
         
-        // Initialize viewport property
-        this.viewport = null;
+        // Fixed tile size - never changes
+        this.TILE_SIZE = 32;
         
-        // Ensure crisp pixel rendering
-        this.ctx.imageSmoothingEnabled = false;
-    }
-    
-    // Method to calculate the visible portion of the grid
-    calculateViewport() {
-        // Get canvas dimensions
-        const canvas = document.getElementById('gameCanvas');
-        const canvasWidth = canvas.width;
-        const canvasHeight = canvas.height;
-        
-        // Get computed style (actual display size)
-        const computedStyle = window.getComputedStyle(canvas);
-        const displayWidth = parseFloat(computedStyle.width);
-        const displayHeight = parseFloat(computedStyle.height);
-        
-        // Define minimum tile size for playability
-        const minTileSize = 32;
-        
-        // Calculate the tile size that would fit the entire grid
-        const maxTileWidth = displayWidth / GRID_WIDTH;
-        const maxTileHeight = displayHeight / GRID_HEIGHT;
-        
-        // Use the smaller dimension to ensure both fit
-        const maxTileSize = Math.min(maxTileWidth, maxTileHeight);
-        
-        // Initialize viewport
+        // Viewport dimensions (will be calculated based on canvas display size)
         this.viewport = {
             x: 0,
             y: 0,
-            width: GRID_WIDTH,
-            height: GRID_HEIGHT,
-            tileSize: maxTileSize,
-            minTileSize: minTileSize
+            width: 0,
+            height: 0
         };
         
-        // Debug display info
-        console.log("Display dimensions:", { width: displayWidth, height: displayHeight });
-        console.log("Max tile size calculated:", maxTileSize);
+        // Ensure crisp pixel rendering
+        this.ctx.imageSmoothingEnabled = false;
         
-        // If the tile size would be smaller than the minimum, use a scrolling viewport
-        if (maxTileSize < minTileSize) {
-            console.log("Using scrolling viewport with minimum tile size");
-            
-            // Use the minimum tile size
-            this.viewport.tileSize = minTileSize;
-            
-            // Calculate how many tiles fit in the viewport
-            this.viewport.width = Math.floor(displayWidth / minTileSize);
-            this.viewport.height = Math.floor(displayHeight / minTileSize);
-            
-            // Ensure viewport dimensions are at least 1
-            this.viewport.width = Math.max(1, this.viewport.width);
-            this.viewport.height = Math.max(1, this.viewport.height);
-            
-            // Ensure viewport dimensions don't exceed grid size
-            this.viewport.width = Math.min(this.viewport.width, GRID_WIDTH);
-            this.viewport.height = Math.min(this.viewport.height, GRID_HEIGHT);
-            
-            // Center on player if available
-            if (this.game.player) {
-                this.centerViewportOnPlayer();
-            }
+        // Set up resize handler
+        window.addEventListener('resize', this.handleResize.bind(this));
+        
+        // Handle initial sizing
+        this.handleResize();
+    }
+    
+    handleResize() {
+        // Get the container size
+        const container = document.getElementById('game-container');
+        const containerRect = container.getBoundingClientRect();
+        
+        // Calculate available space (accounting for info panel, etc.)
+        // Subtract some space for other elements to prevent scrollbars
+        const availableWidth = containerRect.width;
+        const availableHeight = window.innerHeight - 150; // Space for header, info panel, etc.
+        
+        // Calculate how many tiles can fit in the available space
+        const tilesWide = Math.floor(availableWidth / this.TILE_SIZE);
+        const tilesHigh = Math.floor(availableHeight / this.TILE_SIZE);
+        
+        // Set canvas size to exactly fit these tiles (no partial tiles)
+        this.canvas.width = tilesWide * this.TILE_SIZE;
+        this.canvas.height = tilesHigh * this.TILE_SIZE;
+        
+        // Update viewport dimensions
+        this.viewport.width = Math.min(tilesWide, GRID_WIDTH);
+        this.viewport.height = Math.min(tilesHigh, GRID_HEIGHT);
+        
+        // Center viewport on player if possible
+        if (this.game && this.game.player) {
+            this.centerViewportOnPlayer();
         }
         
-        console.log("Final viewport:", this.viewport);
+        console.log(`Available space: ${availableWidth}x${availableHeight}`);
+        console.log(`Canvas size: ${this.canvas.width}x${this.canvas.height}`);
+        console.log(`Viewport: ${this.viewport.width}x${this.viewport.height} tiles`);
+        
+        // Redraw the game with the new viewport
+        this.drawGame();
     }
     
-    // Method to center the viewport on the player
     centerViewportOnPlayer() {
-        if (!this.game.player) return;
+        if (!this.game || !this.game.player) return;
         
-        // Center the viewport on the player
-        this.viewport.x = Math.max(0, Math.min(
-            GRID_WIDTH - this.viewport.width,
-            Math.floor(this.game.player.x - this.viewport.width / 2)
-        ));
+        // Center viewport on player position
+        this.viewport.x = Math.floor(this.game.player.x - this.viewport.width / 2);
+        this.viewport.y = Math.floor(this.game.player.y - this.viewport.height / 2);
         
-        this.viewport.y = Math.max(0, Math.min(
-            GRID_HEIGHT - this.viewport.height,
-            Math.floor(this.game.player.y - this.viewport.height / 2)
-        ));
+        // Clamp to grid boundaries
+        this.viewport.x = Math.max(0, Math.min(GRID_WIDTH - this.viewport.width, this.viewport.x));
+        this.viewport.y = Math.max(0, Math.min(GRID_HEIGHT - this.viewport.height, this.viewport.y));
     }
     
-    // Method to update viewport position as player moves
     updateViewportPosition() {
-        if (!this.game.player) return false;
+        if (!this.game || !this.game.player) return false;
         
         const playerX = this.game.player.x;
         const playerY = this.game.player.y;
         
-        // Only update if the viewport doesn't show the full grid
+        // Only update if we're not showing the full grid
         if (this.viewport.width < GRID_WIDTH || this.viewport.height < GRID_HEIGHT) {
             // Define margins (20% of viewport size)
-            const marginX = Math.floor(this.viewport.width * 0.2);
-            const marginY = Math.floor(this.viewport.height * 0.2);
+            const marginX = Math.max(1, Math.floor(this.viewport.width * 0.2));
+            const marginY = Math.max(1, Math.floor(this.viewport.height * 0.2));
             
             let changed = false;
             
-            // Check if player is too close to edges
+            // Scroll viewport if player is too close to the edge
             if (playerX < this.viewport.x + marginX) {
                 this.viewport.x = Math.max(0, playerX - marginX);
                 changed = true;
@@ -136,41 +118,29 @@ class Renderer {
     }
     
     drawGame() {
-        // Ensure grid exists before drawing
-        if (!this.game.grid || this.game.grid.length === 0) {
-            console.warn('Attempted to draw empty grid');
+        // Ensure grid and viewport are available
+        if (!this.game || !this.game.grid || this.game.grid.length === 0 || !this.viewport) {
+            console.warn('Cannot draw game: grid or viewport not available');
             return;
         }
-
-        // Initialize viewport if needed
-        if (!this.viewport) {
-            this.calculateViewport();
-            if (this.game.player) {
-                this.centerViewportOnPlayer();
-            }
-        }
-
-        // Clear the canvas
+        
+        // Clear canvas
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Fill background
+        // Draw black background
         this.ctx.fillStyle = '#000000';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Get tile size from viewport
-        const tileSize = this.viewport.tileSize;
+        // Calculate offset to center the visible part of the grid
+        const gameWidth = this.viewport.width * this.TILE_SIZE;
+        const gameHeight = this.viewport.height * this.TILE_SIZE;
+        const offsetX = Math.floor((this.canvas.width - gameWidth) / 2);
+        const offsetY = Math.floor((this.canvas.height - gameHeight) / 2);
         
-        // Calculate the drawing dimensions
-        const gameWidth = this.viewport.width * tileSize;
-        const gameHeight = this.viewport.height * tileSize;
-        
-        // Center the game on the canvas
-        const offsetX = Math.max(0, (this.canvas.width - gameWidth) / 2);
-        const offsetY = Math.max(0, (this.canvas.height - gameHeight) / 2);
-        
-        // Draw visible portion of the grid
+        // Draw each visible tile
         for (let y = 0; y < this.viewport.height; y++) {
             for (let x = 0; x < this.viewport.width; x++) {
+                // Convert viewport coordinates to grid coordinates
                 const gridX = x + this.viewport.x;
                 const gridY = y + this.viewport.y;
                 
@@ -179,49 +149,59 @@ class Renderer {
                     continue;
                 }
                 
-                const tileType = this.game.grid[gridY][gridX];
-                const drawX = x * tileSize + offsetX;
-                const drawY = y * tileSize + offsetY;
+                // Skip if grid position doesn't exist (safety check)
+                if (!this.game.grid[gridY] || typeof this.game.grid[gridY][gridX] === 'undefined') {
+                    continue;
+                }
                 
-                // Draw based on grid value
+                // Get tile type from grid
+                const tileType = this.game.grid[gridY][gridX];
+                
+                // Calculate drawing position
+                const drawX = x * this.TILE_SIZE + offsetX;
+                const drawY = y * this.TILE_SIZE + offsetY;
+                
+                // Draw based on tile type
                 switch (tileType) {
                     case ENTITY_TYPES.WALL:
-                        this.drawWall(drawX, drawY, tileSize);
+                        this.drawWall(drawX, drawY);
                         break;
                     case ENTITY_TYPES.DIRT:
-                        this.drawDirt(drawX, drawY, tileSize);
+                        this.drawDirt(drawX, drawY);
                         break;
                     case ENTITY_TYPES.BOULDER:
-                        this.drawBoulder(drawX, drawY, tileSize);
+                        this.drawBoulder(drawX, drawY);
                         break;
                     case ENTITY_TYPES.DIAMOND:
-                        this.drawDiamond(drawX, drawY, tileSize);
+                        this.drawDiamond(drawX, drawY);
                         break;
                     case ENTITY_TYPES.PLAYER:
-                        this.drawPlayer(drawX, drawY, tileSize);
+                        this.drawPlayer(drawX, drawY);
                         break;
                     case ENTITY_TYPES.EXIT:
-                        this.drawExit(drawX, drawY, tileSize);
+                        this.drawExit(drawX, drawY);
                         break;
                 }
             }
         }
         
-        // Draw mini-map if we're not seeing the whole grid
+        // Draw mini-map if not showing entire grid
         if (this.viewport.width < GRID_WIDTH || this.viewport.height < GRID_HEIGHT) {
             this.drawMiniMap();
         }
     }
-
-    // Add this new method to renderer.js for showing a mini-map
+    
     drawMiniMap() {
-        // Parameters for mini-map
-        const mapSize = 120;  // Size of the mini-map in pixels
-        const padding = 10;   // Padding from the edge
+        // Skip if canvas is too small for a meaningful mini-map
+        if (this.canvas.width < 200 || this.canvas.height < 200) return;
+        
+        // Mini-map settings
+        const mapSize = Math.min(100, Math.min(this.canvas.width, this.canvas.height) * 0.2);
+        const padding = 10;
         const mapX = this.canvas.width - mapSize - padding;
         const mapY = this.canvas.height - mapSize - padding;
         
-        // Calculate scaling factors
+        // Calculate scaling
         const scaleX = mapSize / GRID_WIDTH;
         const scaleY = mapSize / GRID_HEIGHT;
         
@@ -229,12 +209,12 @@ class Renderer {
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         this.ctx.fillRect(mapX, mapY, mapSize, mapSize);
         
-        // Draw border
+        // Draw grid outline
         this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
         this.ctx.lineWidth = 1;
         this.ctx.strokeRect(mapX, mapY, mapSize, mapSize);
         
-        // Draw viewport area
+        // Draw viewport rectangle
         this.ctx.strokeStyle = '#FFFFFF';
         this.ctx.lineWidth = 2;
         this.ctx.strokeRect(
@@ -244,8 +224,8 @@ class Renderer {
             this.viewport.height * scaleY
         );
         
-        // Draw player position if available
-        if (this.game.player) {
+        // Draw player position
+        if (this.game && this.game.player) {
             this.ctx.fillStyle = '#FF0000';
             this.ctx.beginPath();
             this.ctx.arc(
@@ -257,61 +237,63 @@ class Renderer {
         }
     }
     
-    drawWall(x, y, tileSize = TILE_SIZE) {
+    // Drawing methods - all use the fixed tile size
+    
+    drawWall(x, y) {
         if (window.spriteManager && window.spriteManager.getSprite('wall')) {
-            this.ctx.drawImage(window.spriteManager.getSprite('wall'), x, y, tileSize, tileSize);
+            this.ctx.drawImage(window.spriteManager.getSprite('wall'), x, y, this.TILE_SIZE, this.TILE_SIZE);
         } else {
             this.ctx.fillStyle = '#555';
-            this.ctx.fillRect(x, y, tileSize, tileSize);
+            this.ctx.fillRect(x, y, this.TILE_SIZE, this.TILE_SIZE);
         }
     }
     
-    drawDirt(x, y, tileSize = TILE_SIZE) {
+    drawDirt(x, y) {
         if (window.spriteManager && window.spriteManager.getSprite('dirt')) {
-            this.ctx.drawImage(window.spriteManager.getSprite('dirt'), x, y, tileSize, tileSize);
+            this.ctx.drawImage(window.spriteManager.getSprite('dirt'), x, y, this.TILE_SIZE, this.TILE_SIZE);
         } else {
             this.ctx.fillStyle = '#8B4513';
-            this.ctx.fillRect(x + 2, y + 2, tileSize - 4, tileSize - 4);
+            this.ctx.fillRect(x + 2, y + 2, this.TILE_SIZE - 4, this.TILE_SIZE - 4);
         }
     }
     
-    drawBoulder(x, y, tileSize = TILE_SIZE) {
+    drawBoulder(x, y) {
         if (window.spriteManager && window.spriteManager.getSprite('boulder')) {
-            this.ctx.drawImage(window.spriteManager.getSprite('boulder'), x, y, tileSize, tileSize);
+            this.ctx.drawImage(window.spriteManager.getSprite('boulder'), x, y, this.TILE_SIZE, this.TILE_SIZE);
         } else {
             this.ctx.fillStyle = '#AAA';
             this.ctx.beginPath();
-            this.ctx.arc(x + tileSize/2, y + tileSize/2, tileSize/2 - 4, 0, Math.PI * 2);
+            this.ctx.arc(x + this.TILE_SIZE/2, y + this.TILE_SIZE/2, this.TILE_SIZE/2 - 4, 0, Math.PI * 2);
             this.ctx.fill();
         }
     }
     
-    drawDiamond(x, y, tileSize = TILE_SIZE) {
+    drawDiamond(x, y) {
         if (window.spriteManager && window.spriteManager.getSprite('diamond')) {
-            this.ctx.drawImage(window.spriteManager.getSprite('diamond'), x, y, tileSize, tileSize);
+            this.ctx.drawImage(window.spriteManager.getSprite('diamond'), x, y, this.TILE_SIZE, this.TILE_SIZE);
         } else {
             this.ctx.fillStyle = '#00FFFF';
             this.ctx.beginPath();
-            this.ctx.arc(x + tileSize/2, y + tileSize/2, tileSize/2 - 4, 0, Math.PI * 2);
+            this.ctx.arc(x + this.TILE_SIZE/2, y + this.TILE_SIZE/2, this.TILE_SIZE/2 - 4, 0, Math.PI * 2);
             this.ctx.fill();
         }
     }
     
-    drawPlayer(x, y, tileSize = TILE_SIZE) {
+    drawPlayer(x, y) {
         if (window.spriteManager && window.spriteManager.getSprite('player')) {
-            this.ctx.drawImage(window.spriteManager.getSprite('player'), x, y, tileSize, tileSize);
+            this.ctx.drawImage(window.spriteManager.getSprite('player'), x, y, this.TILE_SIZE, this.TILE_SIZE);
         } else {
             this.ctx.fillStyle = '#FF0000';
-            this.ctx.fillRect(x, y, tileSize, tileSize);
+            this.ctx.fillRect(x, y, this.TILE_SIZE, this.TILE_SIZE);
         }
     }
     
-    drawExit(x, y, tileSize = TILE_SIZE) {
+    drawExit(x, y) {
         if (window.spriteManager && window.spriteManager.getSprite('exit')) {
-            this.ctx.drawImage(window.spriteManager.getSprite('exit'), x, y, tileSize, tileSize);
+            this.ctx.drawImage(window.spriteManager.getSprite('exit'), x, y, this.TILE_SIZE, this.TILE_SIZE);
         } else {
             this.ctx.fillStyle = '#00FF00';
-            this.ctx.fillRect(x, y, tileSize, tileSize);
+            this.ctx.fillRect(x, y, this.TILE_SIZE, this.TILE_SIZE);
         }
     }
     

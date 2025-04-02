@@ -36,7 +36,6 @@ class Game {
         this.init();
     }
     
-    // Update the init method in the Game class to include viewport initialization
     async init() {
         try {
             this.logger.info('Initializing game...');
@@ -67,11 +66,10 @@ class Game {
                 this.timeLeft
             );
             
-            // Initialize viewport after level is created and player is positioned
-            this.renderer.calculateViewport();
+            // Ensure the viewport is centered on the player
             this.renderer.centerViewportOnPlayer();
             
-            // Ensure initial game state is drawn with the viewport
+            // Ensure initial game state is drawn
             this.renderer.drawGame();
             
             // Start game loops
