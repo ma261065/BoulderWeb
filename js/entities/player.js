@@ -8,14 +8,18 @@ class Player extends Entity {
         return false;
     }
     
-    draw(ctx, x, y) {
+    draw(ctx, x, y, tileSize = TILE_SIZE) {
         // Use the sprite if available
         if (window.spriteManager && window.spriteManager.getSprite('player')) {
-            ctx.drawImage(window.spriteManager.getSprite('player'), x, y);
+            ctx.drawImage(
+                window.spriteManager.getSprite('player'), 
+                x, y, 
+                tileSize, tileSize
+            );
         } else {
             // Fallback to drawing a rectangle with smaller margins
             ctx.fillStyle = '#FF0000';
-            ctx.fillRect(x, y, 32, 32);
+            ctx.fillRect(x, y, tileSize, tileSize);
         }
     }
     
@@ -57,6 +61,12 @@ class Player extends Entity {
                 // Update entity instances in level manager to reflect the pushed boulder
                 game.levelManager.updateEntityPosition(ENTITY_TYPES.BOULDER, newX, newY, pushDestX, newY);
                 
+                // Force immediate entity sync to avoid visual glitches
+                game.syncEntitiesWithGrid();
+                
+                // Update viewport if renderer supports it
+                this.updateViewport(game);
+                
                 return true;
             }
             // If cannot push the boulder, the move is invalid
@@ -92,6 +102,21 @@ class Player extends Entity {
         // Force immediate entity sync to avoid visual glitches
         game.syncEntitiesWithGrid();
         
+        // Update viewport if renderer supports it
+        this.updateViewport(game);
+        
         return true;
+    }
+    
+    // Helper method for viewport updates to avoid code duplication
+    updateViewport(game) {
+        if (game.renderer && typeof game.renderer.updateViewportPosition === 'function') {
+            // This will center viewport on player if needed
+            const viewportChanged = game.renderer.updateViewportPosition();
+            if (viewportChanged) {
+                // Force redraw if the viewport changed
+                game.renderer.drawGame();
+            }
+        }
     }
 }

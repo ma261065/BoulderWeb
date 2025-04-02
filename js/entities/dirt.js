@@ -8,14 +8,14 @@ class Dirt extends Entity {
         return false;
     }
     
-    draw(ctx, x, y) {
+    draw(ctx, x, y, tileSize = TILE_SIZE) {
         // Use the sprite if available
         if (window.spriteManager && window.spriteManager.getSprite('dirt')) {
-            ctx.drawImage(window.spriteManager.getSprite('dirt'), x, y, TILE_SIZE, TILE_SIZE);
+            ctx.drawImage(window.spriteManager.getSprite('dirt'), x, y, tileSize, tileSize);
         } else {
             // Fallback to drawing a rectangle
             ctx.fillStyle = '#8B4513';
-            ctx.fillRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+            ctx.fillRect(x + 2, y + 2, tileSize - 4, tileSize - 4);
         }
     }
 }

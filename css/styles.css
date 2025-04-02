@@ -1,26 +1,40 @@
 body {
     background-color: #333;
     margin: 0;
-    padding: 20px;
+    padding: 10px;
     font-family: Arial, sans-serif;
     color: white;
     text-align: center;
 }
 
-/* Adjust game container to have more space at bottom */
+canvas {
+    display: block;
+    margin: 0 auto;
+    background-color: black;
+    border: 2px solid #555;
+    
+    /* Prevent distortion */
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+    
+    /* Responsive behavior */
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 70vh; /* Limit height to 70% of viewport height */
+    
+    /* Force browser to respect dimensions */
+    object-fit: contain;
+}
+
 #game-container {
     margin: 0 auto;
     position: relative;
-    padding-bottom: 100px; /* Add extra space at bottom for touch controls */
-}
-
-canvas {
-    border: 2px solid #555;
-    background-color: black;
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
     max-width: 100%;
-    height: auto;
+    width: 100%;
+    padding-bottom: 80px; /* Space for controls */
+    overflow: hidden; /* Prevent scrollbars */
 }
 
 #info-panel {

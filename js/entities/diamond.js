@@ -70,15 +70,15 @@ class Diamond extends Entity {
         return false;
     }
     
-    draw(ctx, x, y) {
+    draw(ctx, x, y, tileSize = TILE_SIZE) {
         // Use the sprite if available
         if (window.spriteManager && window.spriteManager.getSprite('diamond')) {
-            ctx.drawImage(window.spriteManager.getSprite('diamond'), x, y, TILE_SIZE, TILE_SIZE);
+            ctx.drawImage(window.spriteManager.getSprite('diamond'), x, y, tileSize, tileSize);
         } else {
             // Fallback to drawing a circle
             ctx.fillStyle = '#00FFFF';
             ctx.beginPath();
-            ctx.arc(x + TILE_SIZE/2, y + TILE_SIZE/2, TILE_SIZE/2 - 4, 0, Math.PI * 2);
+            ctx.arc(x + tileSize/2, y + tileSize/2, tileSize/2 - 4, 0, Math.PI * 2);
             ctx.fill();
         }
     }

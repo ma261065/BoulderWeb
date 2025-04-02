@@ -36,6 +36,7 @@ class Game {
         this.init();
     }
     
+    // Update the init method in the Game class to include viewport initialization
     async init() {
         try {
             this.logger.info('Initializing game...');
@@ -66,7 +67,11 @@ class Game {
                 this.timeLeft
             );
             
-            // Ensure initial game state is drawn
+            // Initialize viewport after level is created and player is positioned
+            this.renderer.calculateViewport();
+            this.renderer.centerViewportOnPlayer();
+            
+            // Ensure initial game state is drawn with the viewport
             this.renderer.drawGame();
             
             // Start game loops
@@ -76,6 +81,7 @@ class Game {
             this.logger.info('Game initialized successfully');
         } catch (error) {
             this.logger.error('Game initialization failed', error);
+            console.error('Detailed error:', error);
         }
     }
     
@@ -102,6 +108,10 @@ class Game {
             this.diamondsNeeded,
             this.timeLeft
         );
+        
+        // Update viewport for new level
+        this.renderer.calculateViewport();
+        this.renderer.centerViewportOnPlayer();
         
         // Draw initial state
         this.renderer.drawGame();
