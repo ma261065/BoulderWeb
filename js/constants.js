@@ -1,9 +1,9 @@
 // Game constants
-const TILE_SIZE = 40;
-const GRID_WIDTH = 20;
-const GRID_HEIGHT = 15;
+const TILE_SIZE = 32;
+const GRID_WIDTH = 64;
+const GRID_HEIGHT = 32;
 
-// Entity type enum
+// Entity type enum (unchanged)
 const ENTITY_TYPES = {
     EMPTY: 0,
     WALL: 1,
@@ -14,7 +14,7 @@ const ENTITY_TYPES = {
     EXIT: 6
 };
 
-// Sound file paths
+// Sound file paths (unchanged)
 const SOUND_PATHS = {
     move: 'sounds/move.wav',
     dig: 'sounds/dig.wav',
@@ -25,7 +25,7 @@ const SOUND_PATHS = {
     gameOver: 'sounds/game_over.wav'
 };
 
-// Sprite file paths
+// Sprite file paths (unchanged)
 const SPRITE_PATHS = {
     wall: 'images/wall.bmp',
     dirt: 'images/dirt.bmp',
@@ -35,16 +35,16 @@ const SPRITE_PATHS = {
     exit: 'images/exit.bmp'
 };
 
-// Game settings
+// Updated game settings to accommodate larger grid
 const GAME_SETTINGS = {
-    initialTime: 120,
-    baseDiamondsNeeded: 5,
-    diamondsIncrementPerLevel: 2,
-    baseWallCount: 20,
-    wallIncrementPerLevel: 5,
-    baseBoulderCount: 10,
-    boulderIncrementPerLevel: 2,
-    extraDiamonds: 5,
+    initialTime: 180, // Increased time for larger grid
+    baseDiamondsNeeded: 10,
+    diamondsIncrementPerLevel: 3,
+    baseWallCount: 50,
+    wallIncrementPerLevel: 10,
+    baseBoulderCount: 20,
+    boulderIncrementPerLevel: 4,
+    extraDiamonds: 10,
     gameUpdateInterval: 100, // milliseconds
     timerUpdateInterval: 1000 // milliseconds
 };

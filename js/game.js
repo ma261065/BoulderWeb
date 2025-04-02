@@ -1,6 +1,8 @@
 class Game {
-    constructor() {
-        console.log('Creating new game instance...');
+    constructor(customConfig = {}) {
+        // Initialize logging and configuration
+        this.logger = new GameLogger(GameLogger.levels.DEBUG);
+        this.config = new GameConfig(customConfig);
         
         // Game state
         this.grid = [];
@@ -8,20 +10,24 @@ class Game {
         this.isGameOver = false;
         this.hasExitAppeared = false;
         this.diamondsCollected = 0;
-        this.diamondsNeeded = 10;
-        this.timeLeft = GAME_SETTINGS.initialTime;
+        this.diamondsNeeded = this.config.get('levels.baseDiamondsNeeded');
+        this.timeLeft = this.config.get('time.initialTime');
         
-        // Intervals
-        this.gameInterval = null;
-        this.timerInterval = null;
+        // Intervals and animation frames
+        this.gameLoopId = null;
+        this.timerIntervalId = null;
         
-        // Systems - initialize in the correct order
+        // Systems
+        this.assetPreloader = new AssetPreloader(this.config);
         this.soundManager = new SoundManager();
         
-        // Load sprites first
-        console.log('Creating sprite manager...');
-        window.spriteManager = new SpriteManager();
+        // Sprite management
+        window.spriteManager = {
+            sprites: {},
+            getSprite: (name) => this.assetPreloader.getSprite(name)
+        };
         
+        // Renderer and other systems
         this.renderer = new Renderer(this);
         this.levelManager = new LevelManager(this);
         this.inputManager = new InputManager(this);
@@ -30,18 +36,63 @@ class Game {
         this.init();
     }
     
-    init() {
-        console.log('Initializing game...');
+    async init() {
+        try {
+            this.logger.info('Initializing game...');
+            
+            // Preload assets
+            await Promise.all([
+                this.assetPreloader.preloadSprites(),
+                this.assetPreloader.preloadSounds()
+            ]);
+            
+            // Create first level
+            const levelData = this.levelManager.createLevel(this.levelManager.getCurrentLevel());
+            this.grid = levelData.grid;
+            this.player = levelData.player;
+            
+            // Reset game state
+            this.diamondsCollected = 0;
+            this.hasExitAppeared = false;
+            this.timeLeft = this.config.get('time.initialTime');
+            this.diamondsNeeded = this.config.get('levels.baseDiamondsNeeded');
+            this.isGameOver = false;
+            
+            // Update UI
+            this.renderer.updateUI(
+                this.levelManager.getCurrentLevel(),
+                this.diamondsCollected,
+                this.diamondsNeeded,
+                this.timeLeft
+            );
+            
+            // Ensure initial game state is drawn
+            this.renderer.drawGame();
+            
+            // Start game loops
+            this.startGameLoop();
+            this.startTimerLoop();
+            
+            this.logger.info('Game initialized successfully');
+        } catch (error) {
+            this.logger.error('Game initialization failed', error);
+        }
+    }
+    
+    startNewLevel(level) {
+        this.logger.info(`Starting level ${level}`);
         
-        // Create the first level
-        const levelData = this.levelManager.createLevel(this.levelManager.getCurrentLevel());
+        // Reset level-specific state
+        const levelData = this.levelManager.createLevel(level);
         this.grid = levelData.grid;
         this.player = levelData.player;
         
         // Reset game state
         this.diamondsCollected = 0;
         this.hasExitAppeared = false;
-        this.timeLeft = GAME_SETTINGS.initialTime;
+        this.timeLeft = this.config.get('time.initialTime');
+        this.diamondsNeeded = this.config.get('levels.baseDiamondsNeeded') + 
+                               (level * this.config.get('levels.diamondsIncrementPerLevel'));
         this.isGameOver = false;
         
         // Update UI
@@ -55,9 +106,59 @@ class Game {
         // Draw initial state
         this.renderer.drawGame();
         
-        // Start game loop
-        this.gameInterval = setInterval(() => this.update(), GAME_SETTINGS.gameUpdateInterval);
-        this.timerInterval = setInterval(() => this.updateTimer(), GAME_SETTINGS.timerUpdateInterval);
+        // Start game loops
+        this.startGameLoop();
+        this.startTimerLoop();
+    }
+    
+    collectDiamond() {
+        this.diamondsCollected++;
+        
+        // Update UI
+        this.renderer.updateUI(
+            this.levelManager.getCurrentLevel(),
+            this.diamondsCollected,
+            this.diamondsNeeded,
+            this.timeLeft
+        );
+        
+        // Check if all diamonds collected
+        if (this.diamondsCollected >= this.diamondsNeeded && !this.hasExitAppeared) {
+            this.levelManager.createExit(this.grid);
+            this.hasExitAppeared = true;
+            this.renderer.drawGame();
+        }
+    }
+    
+    startGameLoop() {
+        let lastUpdateTime = 0;
+        const updateInterval = this.config.get('gameLoop.updateInterval');
+        
+        const gameLoop = (currentTime) => {
+            if (!this.isGameOver) {
+                // Track time-based updates
+                if (currentTime - lastUpdateTime >= updateInterval) {
+                    this.update();
+                    lastUpdateTime = currentTime;
+                }
+                
+                // Continue the animation loop
+                this.gameLoopId = requestAnimationFrame(gameLoop);
+            }
+        };
+        
+        // Start the game loop
+        this.gameLoopId = requestAnimationFrame(gameLoop);
+    }
+    
+    startTimerLoop() {
+        const timerInterval = this.config.get('gameLoop.timerInterval');
+        
+        this.timerIntervalId = setInterval(() => {
+            if (!this.isGameOver) {
+                this.updateTimer();
+            }
+        }, timerInterval);
     }
     
     update() {
@@ -66,10 +167,9 @@ class Game {
         let somethingChanged = false;
         
         // Process moving entities (boulders and diamonds)
-        // Process from bottom to top, right to left for more natural falling behavior
         const movingEntities = this.levelManager.getMovingEntities();
         
-        // Sort entities from bottom to top, right to left
+        // Sort entities from bottom to top, right to left for natural falling
         movingEntities.sort((a, b) => {
             if (a.y !== b.y) return b.y - a.y; // Bottom to top
             return b.x - a.x; // Right to left
@@ -108,7 +208,7 @@ class Game {
             somethingChanged = true;
         }
         
-        // Sync entity list with grid - ensures consistency
+        // Sync entity list with grid
         this.syncEntitiesWithGrid();
         
         // Redraw if something changed
@@ -117,9 +217,77 @@ class Game {
         }
     }
     
-    // Method to ensure entities match grid state
+    updateTimer() {
+        if (this.isGameOver) return;
+        
+        this.timeLeft--;
+        this.renderer.updateUI(
+            this.levelManager.getCurrentLevel(),
+            this.diamondsCollected,
+            this.diamondsNeeded,
+            this.timeLeft
+        );
+        
+        if (this.timeLeft <= 0) {
+            this.gameOver(false);
+        }
+    }
+   
+    levelComplete() {
+        // Cancel existing loops
+        if (this.gameLoopId) {
+            cancelAnimationFrame(this.gameLoopId);
+        }
+        if (this.timerIntervalId) {
+            clearInterval(this.timerIntervalId);
+        }
+        
+        // Show level complete message
+        this.renderer.drawMessage(
+            'Level Complete!', 
+            `Starting Level ${this.levelManager.getCurrentLevel() + 1} in 3 seconds...`
+        );
+        
+        // Play level complete sound
+        this.soundManager.playSound('levelComplete');
+        
+        // Start new level after delay
+        setTimeout(() => {
+            const nextLevel = this.levelManager.nextLevel();
+            this.startNewLevel(nextLevel);
+        }, 3000);
+    }
+    
+    gameOver(won) {
+        this.isGameOver = true;
+        
+        // Cancel existing loops
+        if (this.gameLoopId) {
+            cancelAnimationFrame(this.gameLoopId);
+        }
+        if (this.timerIntervalId) {
+            clearInterval(this.timerIntervalId);
+        }
+        
+        // Play game over sound
+        this.soundManager.playSound('gameOver');
+        
+        // Show game over message
+        this.renderer.drawMessage(
+            won ? 'You Win!' : 'Game Over',
+            'Press Enter to restart',
+            won ? '#00FF00' : '#FF0000'
+        );
+    }
+    
+    restart() {
+        // Restart current level
+        this.startNewLevel(this.levelManager.getCurrentLevel());
+    }
+    
+    // Ensure entities match grid state
     syncEntitiesWithGrid() {
-        // Create a copy of entity instances
+        // More robust entity synchronization
         const entitiesToKeep = [];
         
         // Add player first - player is always needed
@@ -128,8 +296,11 @@ class Game {
         }
         
         // Iterate through grid and build entity list
-        for (let y = 0; y < GRID_HEIGHT; y++) {
-            for (let x = 0; x < GRID_WIDTH; x++) {
+        const gridWidth = this.config.get('grid.width');
+        const gridHeight = this.config.get('grid.height');
+        
+        for (let y = 0; y < gridHeight; y++) {
+            for (let x = 0; x < gridWidth; x++) {
                 const tileType = this.grid[y][x];
                 
                 // Skip empty tiles and player (already added)
@@ -172,132 +343,105 @@ class Game {
             }
         }
         
+        // Log entity synchronization details
+        this.logger.debug('Entity synchronization', {
+            originalCount: this.levelManager.entityInstances.length,
+            newCount: entitiesToKeep.length
+        });
+        
         // Replace entity instances with synchronized list
         this.levelManager.entityInstances = entitiesToKeep;
     }
     
-    updateTimer() {
+    // Performance tracking method
+    trackPerformance(methodName, startTime) {
+        const endTime = performance.now();
+        const duration = endTime - startTime;
+        
+        this.logger.debug('Performance tracking', {
+            method: methodName,
+            duration: duration.toFixed(2) + 'ms'
+        });
+    }
+    
+    // Difficulty scaling method
+    scaleDifficulty() {
+        // Adjust game parameters based on current level
+        const currentLevel = this.levelManager.getCurrentLevel();
+        
+        // Example difficulty scaling
+        const baseTime = this.config.get('time.initialTime');
+        const timeReduction = Math.floor(currentLevel * 5); // Reduce time by 5 seconds per level
+        const newTime = Math.max(60, baseTime - timeReduction); // Minimum 60 seconds
+        
+        this.timeLeft = newTime;
+        
+        // Potentially increase diamonds needed
+        const baseDiamonds = this.config.get('levels.baseDiamondsNeeded');
+        const diamondIncrement = this.config.get('levels.diamondsIncrementPerLevel');
+        this.diamondsNeeded = baseDiamonds + (currentLevel * diamondIncrement);
+        
+        this.logger.info('Difficulty scaled', {
+            level: currentLevel,
+            timeLeft: this.timeLeft,
+            diamondsNeeded: this.diamondsNeeded
+        });
+    }
+    
+    // Advanced pause and resume functionality
+    pause() {
         if (this.isGameOver) return;
         
-        this.timeLeft--;
-        this.renderer.updateUI(
-            this.levelManager.getCurrentLevel(),
-            this.diamondsCollected,
-            this.diamondsNeeded,
-            this.timeLeft
-        );
-        
-        if (this.timeLeft <= 0) {
-            this.gameOver(false);
+        // Cancel existing loops
+        if (this.gameLoopId) {
+            cancelAnimationFrame(this.gameLoopId);
         }
-    }
-    
-    collectDiamond() {
-        this.diamondsCollected++;
-        this.renderer.updateUI(
-            this.levelManager.getCurrentLevel(),
-            this.diamondsCollected,
-            this.diamondsNeeded,
-            this.timeLeft
-        );
-    }
-    
-    setDiamondsNeeded(count) {
-        this.diamondsNeeded = count;
-        this.renderer.updateUI(
-            this.levelManager.getCurrentLevel(),
-            this.diamondsCollected,
-            this.diamondsNeeded,
-            this.timeLeft
-        );
-    }
-    
-    levelComplete() {
-        // Stop game intervals
-        clearInterval(this.gameInterval);
-        clearInterval(this.timerInterval);
+        if (this.timerIntervalId) {
+            clearInterval(this.timerIntervalId);
+        }
         
-        // Show level complete message
+        // Draw pause message
         this.renderer.drawMessage(
-            'Level Complete!', 
-            `Starting Level ${this.levelManager.getCurrentLevel() + 1} in 3 seconds...`
+            'PAUSED', 
+            'Press ESC to continue',
+            '#FFFF00'
         );
         
-        // Play level complete sound
-        this.soundManager.playSound('levelComplete');
-        
-        // Start new level after delay
-        setTimeout(() => {
-            const nextLevel = this.levelManager.nextLevel();
-            const levelData = this.levelManager.createLevel(nextLevel);
-            
-            this.grid = levelData.grid;
-            this.player = levelData.player;
-            
-            // Reset game state
-            this.diamondsCollected = 0;
-            this.hasExitAppeared = false;
-            this.timeLeft = GAME_SETTINGS.initialTime;
-            
-            // Update UI
-            this.renderer.updateUI(
-                this.levelManager.getCurrentLevel(),
-                this.diamondsCollected,
-                this.diamondsNeeded,
-                this.timeLeft
-            );
-            
-            // Draw initial state
-            this.renderer.drawGame();
-            
-            // Start game loop
-            this.gameInterval = setInterval(() => this.update(), GAME_SETTINGS.gameUpdateInterval);
-            this.timerInterval = setInterval(() => this.updateTimer(), GAME_SETTINGS.timerUpdateInterval);
-        }, 3000);
+        // Add pause event listener
+        this.pauseListener = (e) => {
+            if (e.key === 'Escape') {
+                this.resume();
+            }
+        };
+        window.addEventListener('keydown', this.pauseListener);
     }
     
-    gameOver(won) {
-        this.isGameOver = true;
+    resume() {
+        // Remove pause event listener
+        if (this.pauseListener) {
+            window.removeEventListener('keydown', this.pauseListener);
+        }
         
-        // Stop game intervals
-        clearInterval(this.gameInterval);
-        clearInterval(this.timerInterval);
-        
-        // Play game over sound
-        this.soundManager.playSound('gameOver');
-        
-        // Show game over message
-        this.renderer.drawMessage(
-            won ? 'You Win!' : 'Game Over',
-            'Press Enter to restart',
-            won ? '#00FF00' : '#FF0000'
-        );
-    }
-    
-    restart() {
-        const levelData = this.levelManager.createLevel(this.levelManager.getCurrentLevel());
-        this.grid = levelData.grid;
-        this.player = levelData.player;
-        
-        // Reset game state
-        this.isGameOver = false;
-        this.diamondsCollected = 0;
-        this.hasExitAppeared = false;
-        this.timeLeft = GAME_SETTINGS.initialTime;
-        
-        // Update UI
-        this.renderer.updateUI(
-            this.levelManager.getCurrentLevel(),
-            this.diamondsCollected,
-            this.diamondsNeeded,
-            this.timeLeft
-        );
-        
-        // Draw initial state
+        // Redraw game
         this.renderer.drawGame();
         
-        // Start game loop
-        this.gameInterval = setInterval(() => this.update(), GAME_SETTINGS.gameUpdateInterval);
-        this.timerInterval = setInterval(() => this.updateTimer(), GAME_SETTINGS.timerUpdateInterval);
+        // Restart game loops
+        this.startGameLoop();
+        this.startTimerLoop();
     }
 }
+
+// Attach performance tracking to key methods
+const performanceWrapper = (originalMethod) => {
+    return function(...args) {
+        const startTime = performance.now();
+        const result = originalMethod.apply(this, args);
+        this.trackPerformance(originalMethod.name, startTime);
+        return result;
+    };
+};
+
+// Example of wrapping methods with performance tracking
+Game.prototype.update = performanceWrapper(Game.prototype.update);
+Game.prototype.levelComplete = performanceWrapper(Game.prototype.levelComplete);
+Game.prototype.gameOver = performanceWrapper(Game.prototype.gameOver);

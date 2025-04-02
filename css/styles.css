@@ -7,9 +7,11 @@ body {
     text-align: center;
 }
 
+/* Adjust game container to have more space at bottom */
 #game-container {
     margin: 0 auto;
     position: relative;
+    padding-bottom: 100px; /* Add extra space at bottom for touch controls */
 }
 
 canvas {
@@ -17,13 +19,15 @@ canvas {
     background-color: black;
     image-rendering: pixelated;
     image-rendering: crisp-edges;
+    max-width: 100%;
+    height: auto;
 }
 
 #info-panel {
     margin-top: 10px;
     display: flex;
     justify-content: space-between;
-    max-width: 800px;
+    max-width: 100%;
     margin: 10px auto;
     background-color: #222;
     padding: 10px;
@@ -51,4 +55,32 @@ canvas {
 
 #sound-toggle:hover {
     background-color: #666;
+}
+
+/* Touch controls styling */
+#touch-controls {
+    position: absolute;
+    bottom: 20px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    padding: 10px;
+    background-color: rgba(0,0,0,0.5);
+    z-index: 10;
+}
+
+#touch-controls button {
+    margin: 0 10px;
+    padding: 10px 15px;
+    font-size: 16px;
+    background-color: rgba(255,255,255,0.2);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.5);
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+#touch-controls button:active {
+    background-color: rgba(255,255,255,0.4);
 }

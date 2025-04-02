@@ -11,11 +11,11 @@ class Player extends Entity {
     draw(ctx, x, y) {
         // Use the sprite if available
         if (window.spriteManager && window.spriteManager.getSprite('player')) {
-            ctx.drawImage(window.spriteManager.getSprite('player'), x, y, TILE_SIZE, TILE_SIZE);
+            ctx.drawImage(window.spriteManager.getSprite('player'), x, y);
         } else {
             // Fallback to drawing a rectangle with smaller margins
             ctx.fillStyle = '#FF0000';
-            ctx.fillRect(x + 1, y + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+            ctx.fillRect(x, y, 32, 32);
         }
     }
     
@@ -68,13 +68,15 @@ class Player extends Entity {
             soundManager.playSound('move');
         } else if (destType === ENTITY_TYPES.DIRT) {
             soundManager.playSound('dig');
-            // The grid is the source of truth - just update it
-            // The entity list will be synchronized in the game update
         } else if (destType === ENTITY_TYPES.DIAMOND) {
             soundManager.playSound('diamond');
+            
+            // CRITICAL FIX: Always collect diamond and allow movement
             game.collectDiamond();
-            // The grid is the source of truth - just update it
-            // The entity list will be synchronized in the game update
+            
+            // Remove the diamond from the grid and entity list
+            grid[newY][newX] = ENTITY_TYPES.EMPTY;
+            game.levelManager.removeEntityAtPosition(newX, newY);
         } else if (destType === ENTITY_TYPES.EXIT) {
             soundManager.playSound('levelComplete');
             game.levelComplete();

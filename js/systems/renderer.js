@@ -3,21 +3,30 @@ class Renderer {
         this.game = game;
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
+        
+        // Ensure crisp pixel rendering
+        this.ctx.imageSmoothingEnabled = false;
     }
     
     drawGame() {
+        // Ensure grid exists before drawing
+        if (!this.game.grid || this.game.grid.length === 0) {
+            console.warn('Attempted to draw empty grid');
+            return;
+        }
+
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
         // Draw black background
         this.ctx.fillStyle = '#000000';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // First, draw from the grid directly (this ensures accurate representation)
+        // First, draw from the grid directly
         for (let y = 0; y < GRID_HEIGHT; y++) {
             for (let x = 0; x < GRID_WIDTH; x++) {
                 const tileType = this.game.grid[y][x];
-                const drawX = x * TILE_SIZE;
-                const drawY = y * TILE_SIZE;
+                const drawX = x * 32;
+                const drawY = y * 32;
                 
                 // Draw based on grid value
                 switch (tileType) {
@@ -46,59 +55,59 @@ class Renderer {
     
     drawWall(x, y) {
         if (window.spriteManager && window.spriteManager.getSprite('wall')) {
-            this.ctx.drawImage(window.spriteManager.getSprite('wall'), x, y, TILE_SIZE, TILE_SIZE);
+            this.ctx.drawImage(window.spriteManager.getSprite('wall'), x, y);
         } else {
             this.ctx.fillStyle = '#555';
-            this.ctx.fillRect(x + 1, y + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+            this.ctx.fillRect(x, y, 32, 32);
         }
     }
     
     drawDirt(x, y) {
         if (window.spriteManager && window.spriteManager.getSprite('dirt')) {
-            this.ctx.drawImage(window.spriteManager.getSprite('dirt'), x, y, TILE_SIZE, TILE_SIZE);
+            this.ctx.drawImage(window.spriteManager.getSprite('dirt'), x, y);
         } else {
             this.ctx.fillStyle = '#8B4513';
-            this.ctx.fillRect(x + 1, y + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+            this.ctx.fillRect(x, y, 32, 32);
         }
     }
     
     drawBoulder(x, y) {
         if (window.spriteManager && window.spriteManager.getSprite('boulder')) {
-            this.ctx.drawImage(window.spriteManager.getSprite('boulder'), x, y, TILE_SIZE, TILE_SIZE);
+            this.ctx.drawImage(window.spriteManager.getSprite('boulder'), x, y);
         } else {
             this.ctx.fillStyle = '#AAA';
             this.ctx.beginPath();
-            this.ctx.arc(x + TILE_SIZE/2, y + TILE_SIZE/2, TILE_SIZE/2 - 2, 0, Math.PI * 2);
+            this.ctx.arc(x + 16, y + 16, 14, 0, Math.PI * 2);
             this.ctx.fill();
         }
     }
     
     drawDiamond(x, y) {
         if (window.spriteManager && window.spriteManager.getSprite('diamond')) {
-            this.ctx.drawImage(window.spriteManager.getSprite('diamond'), x, y, TILE_SIZE, TILE_SIZE);
+            this.ctx.drawImage(window.spriteManager.getSprite('diamond'), x, y);
         } else {
             this.ctx.fillStyle = '#00FFFF';
             this.ctx.beginPath();
-            this.ctx.arc(x + TILE_SIZE/2, y + TILE_SIZE/2, TILE_SIZE/2 - 2, 0, Math.PI * 2);
+            this.ctx.arc(x + 16, y + 16, 14, 0, Math.PI * 2);
             this.ctx.fill();
         }
     }
     
     drawPlayer(x, y) {
         if (window.spriteManager && window.spriteManager.getSprite('player')) {
-            this.ctx.drawImage(window.spriteManager.getSprite('player'), x, y, TILE_SIZE, TILE_SIZE);
+            this.ctx.drawImage(window.spriteManager.getSprite('player'), x, y);
         } else {
             this.ctx.fillStyle = '#FF0000';
-            this.ctx.fillRect(x + 1, y + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+            this.ctx.fillRect(x, y, 32, 32);
         }
     }
     
     drawExit(x, y) {
         if (window.spriteManager && window.spriteManager.getSprite('exit')) {
-            this.ctx.drawImage(window.spriteManager.getSprite('exit'), x, y, TILE_SIZE, TILE_SIZE);
+            this.ctx.drawImage(window.spriteManager.getSprite('exit'), x, y);
         } else {
             this.ctx.fillStyle = '#00FF00';
-            this.ctx.fillRect(x + 1, y + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+            this.ctx.fillRect(x, y, 32, 32);
         }
     }
     
