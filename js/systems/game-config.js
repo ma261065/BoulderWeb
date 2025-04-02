@@ -3,9 +3,9 @@ class GameConfig {
     static get default() {
         return {
             grid: {
-                width: 20,
-                height: 15,
-                tileSize: 40
+                width: GRID_WIDTH || 64,   // Use constants if available
+                height: GRID_HEIGHT || 32,  // Use constants if available
+                tileSize: TILE_SIZE || 32   // Use constants if available
             },
             levels: {
                 baseWallCount: 20,
@@ -17,8 +17,8 @@ class GameConfig {
                 boulderIncrementPerLevel: 2
             },
             gameLoop: {
-                updateInterval: 100,
-                timerInterval: 1000
+                updateInterval: 100,  // milliseconds between physics updates
+                timerInterval: 1000   // milliseconds between timer updates
             },
             player: {
                 moveDelay: 150

@@ -169,24 +169,47 @@ class Game {
         // Process moving entities (boulders and diamonds)
         const movingEntities = this.levelManager.getMovingEntities();
         
-        // Sort entities from bottom to top, right to left for natural falling
+        // First, sort entities from bottom to top for natural falling
+        // This prevents issues where upper boulders might move first
         movingEntities.sort((a, b) => {
             if (a.y !== b.y) return b.y - a.y; // Bottom to top
             return b.x - a.x; // Right to left
         });
         
+        // Debug - log moving entities count
+        console.log(`Processing ${movingEntities.length} moving entities`);
+        
         // Update each entity
         for (const entity of movingEntities) {
+            // Store original position for entity instance updating
+            const originalX = entity.x;
+            const originalY = entity.y;
+            
+            // Update entity - this modifies the grid and entity properties
             const changed = entity.update(this.grid);
             
             if (changed) {
                 somethingChanged = true;
                 
+                // Explicitly update entity position in the levelManager
+                if (originalX !== entity.x || originalY !== entity.y) {
+                    this.levelManager.updateEntityPosition(
+                        entity.type, 
+                        originalX, 
+                        originalY, 
+                        entity.x, 
+                        entity.y
+                    );
+                    
+                    // Debug - log entity movement
+                    console.log(`Entity moved from (${originalX},${originalY}) to (${entity.x},${entity.y})`);
+                }
+                
                 // Check if sound should be played
                 if (typeof entity.getFallingSound === 'function') {
                     const soundName = entity.getFallingSound();
                     if (soundName) {
-                        this.soundManager.playSoundWithProbability(soundName, 0.1);
+                        this.soundManager.playSoundWithProbability(soundName, 0.3); // Increased probability
                     }
                 }
                 
@@ -201,6 +224,16 @@ class Game {
             }
         }
         
+        // Sync entity list with grid - ensure all entities match the grid state
+        // This is necessary to fix issues with entities disappearing or duplicating
+        this.syncEntitiesWithGrid();
+        
+        // Always redraw if we processed any moving entities, even if they didn't change
+        // This ensures continuous visual updates
+        if (movingEntities.length > 0 || somethingChanged) {
+            this.renderer.drawGame();
+        }
+            
         // Check if exit should appear
         if (!this.hasExitAppeared && this.diamondsCollected >= this.diamondsNeeded) {
             this.levelManager.createExit(this.grid);

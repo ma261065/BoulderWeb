@@ -208,8 +208,17 @@ class LevelManager {
     }
     
     updateEntityPosition(type, oldX, oldY, newX, newY) {
-        const entity = this.entityInstances.find(e => 
+        // First, look for exact position match
+        let entity = this.entityInstances.find(e => 
             e.type === type && e.x === oldX && e.y === oldY);
+        
+        // If not found, try to find by type and rough position (might help with timing issues)
+        if (!entity) {
+            entity = this.entityInstances.find(e => 
+                e.type === type && 
+                Math.abs(e.x - oldX) <= 1 && 
+                Math.abs(e.y - oldY) <= 1);
+        }
             
         if (entity) {
             this.logger.debug('Updating entity position', { 
@@ -224,6 +233,28 @@ class LevelManager {
             entity.y = newY;
             return true;
         }
+        
+        // If entity wasn't found, create a new one at the destination
+        this.logger.warn('Entity not found for position update, creating new entity', {
+            type: Object.keys(ENTITY_TYPES).find(k => ENTITY_TYPES[k] === type),
+            oldX, oldY, newX, newY
+        });
+        
+        let newEntity = null;
+        switch (type) {
+            case ENTITY_TYPES.BOULDER:
+                newEntity = new Boulder(newX, newY);
+                break;
+            case ENTITY_TYPES.DIAMOND:
+                newEntity = new Diamond(newX, newY);
+                break;
+        }
+        
+        if (newEntity) {
+            this.entityInstances.push(newEntity);
+            return true;
+        }
+        
         return false;
     }
     
