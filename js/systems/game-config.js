@@ -3,28 +3,29 @@ class GameConfig {
     static get default() {
         return {
             grid: {
-                width: GRID_WIDTH || 64,   // Use constants if available
-                height: GRID_HEIGHT || 32,  // Use constants if available
-                tileSize: TILE_SIZE || 32   // Use constants if available
+                width: GRID_WIDTH || 64,
+                height: GRID_HEIGHT || 32,
+                tileSize: TILE_SIZE || 32
             },
             levels: {
-                baseWallCount: 20,
-                wallIncrementPerLevel: 5,
-                baseDiamondsNeeded: 5,
-                diamondsIncrementPerLevel: 2,
-                extraDiamonds: 5,
-                baseBoulderCount: 10,
-                boulderIncrementPerLevel: 2
+                baseWallCount: GAME_SETTINGS.baseWallCount || 20,
+                wallIncrementPerLevel: GAME_SETTINGS.wallIncrementPerLevel || 5,
+                baseDiamondsNeeded: GAME_SETTINGS.baseDiamondsNeeded || 5,
+                diamondsIncrementPerLevel: GAME_SETTINGS.diamondsIncrementPerLevel || 2,
+                extraDiamonds: GAME_SETTINGS.extraDiamonds || 5,
+                baseBoulderCount: GAME_SETTINGS.baseBoulderCount || 10,
+                boulderIncrementPerLevel: GAME_SETTINGS.boulderIncrementPerLevel || 2
             },
             gameLoop: {
-                updateInterval: 100,  // milliseconds between physics updates
-                timerInterval: 1000   // milliseconds between timer updates
+                updateInterval: GAME_SETTINGS.gameUpdateInterval || 250,
+                timerInterval: GAME_SETTINGS.timerUpdateInterval || 1000,
+                physicsFPS: GAME_SETTINGS.physicsFPS || 4
             },
             player: {
-                moveDelay: 150
+                moveDelay: GAME_SETTINGS.moveDelay || 150
             },
             time: {
-                initialTime: 120
+                initialTime: GAME_SETTINGS.initialTime || 120
             }
         };
     }

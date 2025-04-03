@@ -18,6 +18,10 @@ class InputManager {
         window.addEventListener('keydown', this.handleKeyDown.bind(this));
         window.addEventListener('keyup', this.handleKeyUp.bind(this));
         
+        // Set the moveDelay to match the game update interval
+        // This is critical for synchronized movement
+        this.moveDelay = this.game.config.get('gameLoop.updateInterval');
+        
         // Initialize touch controls if on a touch-enabled device
         if (this.isTouchDevice) {
             this.initializeTouchControls();
@@ -98,7 +102,7 @@ class InputManager {
     }
     
     addButtonEventListeners(button, key) {
-        // Touch event handlers
+        // Touch event handlers with improved responsiveness
         button.addEventListener('touchstart', (e) => {
             e.preventDefault();
             this.handleDirectionalInput(key);
@@ -106,13 +110,18 @@ class InputManager {
             
             // Enable continuous movement while button is held
             this.startContinuousMovement(key);
-        });
+        }, { passive: false });
         
         button.addEventListener('touchend', (e) => {
             e.preventDefault();
             button.style.backgroundColor = 'rgba(255,255,255,0.2)';
             this.stopContinuousMovement();
-        });
+        }, { passive: false });
+        
+        button.addEventListener('touchcancel', (e) => {
+            button.style.backgroundColor = 'rgba(255,255,255,0.2)';
+            this.stopContinuousMovement();
+        }, { passive: false });
         
         // Mouse event handlers (for testing on desktop)
         button.addEventListener('mousedown', (e) => {
@@ -142,16 +151,22 @@ class InputManager {
         // Store the key being held
         this.heldKey = key;
         
-        // Set an interval to repeatedly move in that direction
+        // Use the game's update interval for consistent timing
+        const moveInterval = this.game.config.get('gameLoop.updateInterval');
+        
+        // Initial move immediately
+        this.handleDirectionalInput(this.heldKey);
+        
+        // Set an interval to repeatedly move in that direction at the same rate as game updates
         this.moveInterval = setInterval(() => {
             this.handleDirectionalInput(this.heldKey);
-        }, this.moveDelay);
+        }, moveInterval);
     }
     
     stopContinuousMovement() {
-        if (this.moveInterval) {
-            clearInterval(this.moveInterval);
-            this.moveInterval = null;
+        if (this.moveLoopId) {
+            cancelAnimationFrame(this.moveLoopId);
+            this.moveLoopId = null;
         }
         this.heldKey = null;
     }
@@ -220,23 +235,15 @@ class InputManager {
             return;
         }
         
-        // Get current time
-        const currentTime = Date.now();
-        
-        // Only process movement if enough time has elapsed
-        if (currentTime - this.lastMoveTime >= this.moveDelay) {
-            if (this.processPlayerMovement(key)) {
-                // Update last move time only if player moved
-                this.lastMoveTime = currentTime;
-            }
-        }
+        // Process the movement
+        this.processPlayerMovement(key);
     }
     
     handleKeyDown(e) {
         // Game over restart
         if (this.game.isGameOver) {
             if (e.key === 'Enter') {
-                e.preventDefault(); // Prevent default behavior
+                e.preventDefault();
                 
                 // First remove any restart button that might be present
                 const existingButton = document.getElementById('restart-button');
@@ -280,6 +287,15 @@ class InputManager {
         // Remove released key from tracking
         this.keysPressed.delete(e.key);
     }
+
+    processQueuedMovement() {
+        if (!this.queuedDirection) return false;
+        
+        const moved = this.processPlayerMovement(this.queuedDirection);
+        this.queuedDirection = null; // Clear the queued direction
+        
+        return moved;
+    }
     
     processPlayerMovement(key) {
         // Validate player exists
@@ -307,21 +323,10 @@ class InputManager {
                 break;
         }
         
-        // Attempt to move player
+        // Queue the movement for the next tick
         if (dx !== 0 || dy !== 0) {
-            const moved = this.game.player.tryMove(
-                this.game.grid, 
-                dx, 
-                dy, 
-                this.game.soundManager,
-                this.game
-            );
-            
-            if (moved) {
-                // Redraw game after successful move
-                this.game.renderer.drawGame();
-                return true;
-            }
+            this.game.pendingPlayerMove = [dx, dy];
+            return true;
         }
         
         return false;

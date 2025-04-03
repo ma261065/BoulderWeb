@@ -12,10 +12,14 @@ class Game {
         this.diamondsCollected = 0;
         this.diamondsNeeded = this.config.get('levels.baseDiamondsNeeded');
         this.timeLeft = this.config.get('time.initialTime');
+        this.pendingPlayerMove = null; // Store pending player movement
         
         // Intervals and animation frames
         this.gameLoopId = null;
         this.timerIntervalId = null;
+
+        this.frameRequested = false;  // Flag to indicate a frame needs processing
+        this.frameActions = [];       // Actions to process in the next frame
         
         // Systems
         this.assetPreloader = new AssetPreloader(this.config);
@@ -67,7 +71,7 @@ class Game {
             );
             
             this.initializeCursorBehavior();
-            
+
             // Ensure the viewport is centered on the player
             this.renderer.centerViewportOnPlayer();
             
@@ -76,6 +80,16 @@ class Game {
             
             // Handle orientation changes for mobile
             this.setupOrientationHandler();
+
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    // Page is hidden, pause timers but don't show pause screen
+                    this.pauseTimers();
+                } else {
+                    // Page is visible again, resume timers
+                    this.resumeTimers();
+                }
+            });
             
             // Start game loops
             this.startGameLoop();
@@ -86,6 +100,37 @@ class Game {
             this.logger.error('Game initialization failed', error);
             console.error('Detailed error:', error);
         }
+    }
+
+    requestFrame(action) {
+        if (action) {
+            this.frameActions.push(action);
+        }
+        this.frameRequested = true;
+    }
+
+    pauseTimers() {
+        if (this.gameLoopId) {
+            cancelAnimationFrame(this.gameLoopId);
+            this.gameLoopId = null;
+        }
+        if (this.timerLoopId) {
+            cancelAnimationFrame(this.timerLoopId);
+            this.timerLoopId = null;
+        }
+        // Store the time when we paused
+        this.pauseTime = performance.now();
+    }
+    
+    resumeTimers() {
+        if (this.isGameOver) return;
+        
+        // Calculate how long we were paused
+        const pauseDuration = performance.now() - (this.pauseTime || performance.now());
+        
+        // Restart game loops
+        this.startGameLoop();
+        this.startTimerLoop();
     }
     
     initializeCursorBehavior() {
@@ -192,24 +237,14 @@ class Game {
     }
     
     startGameLoop() {
-        let lastUpdateTime = 0;
-        const updateInterval = this.config.get('gameLoop.updateInterval');
+        const tickInterval = this.config.get('gameLoop.updateInterval');
+        console.log("Game update interval:", tickInterval); // Debug log
         
-        const gameLoop = (currentTime) => {
+        this.gameLoopId = setInterval(() => {
             if (!this.isGameOver) {
-                // Track time-based updates
-                if (currentTime - lastUpdateTime >= updateInterval) {
-                    this.update();
-                    lastUpdateTime = currentTime;
-                }
-                
-                // Continue the animation loop
-                this.gameLoopId = requestAnimationFrame(gameLoop);
+                this.tick(); // Process one tick
             }
-        };
-        
-        // Start the game loop
-        this.gameLoopId = requestAnimationFrame(gameLoop);
+        }, tickInterval);
     }
     
     startTimerLoop() {
@@ -257,38 +292,49 @@ class Game {
     }
     
     // Enhance the update method to always update viewport position when player exists
-    update() {
+    tick() {
         if (this.isGameOver) return;
         
         let somethingChanged = false;
         
-        // IMPORTANT: Process moving entities (boulders and diamonds) FIRST before viewport updates
-        // This ensures physics updates happen correctly
+        // 1. First, process player movement if there's a pending move
+        if (this.pendingPlayerMove) {
+            const [dx, dy] = this.pendingPlayerMove;
+            
+            if (this.player) {
+                const moved = this.player.tryMove(
+                    this.grid, dx, dy, this.soundManager, this
+                );
+                
+                somethingChanged = somethingChanged || moved;
+            }
+            
+            // Clear the pending move whether it succeeded or not
+            this.pendingPlayerMove = null;
+        }
+        
+        // 2. Then process entity movement (bottom to top)
         const movingEntities = this.levelManager.getMovingEntities();
         
-        // First, sort entities from bottom to top for natural falling
-        // This prevents issues where upper boulders might move first
+        // Sort entities from bottom to top for natural falling
         movingEntities.sort((a, b) => {
             if (a.y !== b.y) return b.y - a.y; // Bottom to top
             return b.x - a.x; // Right to left
         });
         
-        // Debug - log moving entities count
-        console.log(`Processing ${movingEntities.length} moving entities`);
-        
-        // Update each entity
+        // Update each entity - ONE move per tick
         for (const entity of movingEntities) {
             // Store original position for entity instance updating
             const originalX = entity.x;
             const originalY = entity.y;
             
-            // Update entity - this modifies the grid and entity properties
+            // Update entity - ONE move per tick
             const changed = entity.update(this.grid);
             
             if (changed) {
                 somethingChanged = true;
                 
-                // Explicitly update entity position in the levelManager
+                // Update entity position in the levelManager
                 if (originalX !== entity.x || originalY !== entity.y) {
                     this.levelManager.updateEntityPosition(
                         entity.type, 
@@ -298,38 +344,32 @@ class Game {
                         entity.y
                     );
                     
-                    // Debug - log entity movement
-                    console.log(`Entity moved from (${originalX},${originalY}) to (${entity.x},${entity.y})`);
-                }
-                
-                // Check if sound should be played
-                if (typeof entity.getFallingSound === 'function') {
-                    const soundName = entity.getFallingSound();
-                    if (soundName) {
-                        this.soundManager.playSoundWithProbability(soundName, 0.3); // Increased probability
+                    // Check if sound should be played
+                    if (typeof entity.getFallingSound === 'function') {
+                        const soundName = entity.getFallingSound();
+                        if (soundName) {
+                            this.soundManager.playSoundWithProbability(soundName, 0.3);
+                        }
                     }
-                }
-                
-                // Check if it falls on player
-                if (entity.falling && 
-                    this.player && 
-                    this.player.y === entity.y && 
-                    this.player.x === entity.x) {
-                    this.gameOver(false);
-                    return;
+                    
+                    // Check if it falls on player
+                    if (entity.falling && 
+                        this.player && 
+                        this.player.y === entity.y && 
+                        this.player.x === entity.x) {
+                        this.gameOver(false);
+                        return;
+                    }
                 }
             }
         }
-        
-        // AFTER processing physics, now check if viewport needs updating
-        // This prevents viewport updates from interfering with physics calculations
+
         if (this.player && this.renderer) {
             const viewportChanged = this.renderer.updateViewportPosition();
             somethingChanged = somethingChanged || viewportChanged;
         }
         
-        // Sync entity list with grid - ensure all entities match the grid state
-        // This is necessary to fix issues with entities disappearing or duplicating
+        // Sync entity list with grid
         this.syncEntitiesWithGrid();
             
         // Check if exit should appear
@@ -400,10 +440,14 @@ class Game {
         // Play game over sound
         this.soundManager.playSound('gameOver');
         
+        // Detect if this is a touch device
+        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        const restartText = isTouchDevice ? 'Tap Restart to play again' : 'Press Enter to restart';
+        
         // Show game over message
         this.renderer.drawMessage(
             won ? 'You Win!' : 'Game Over',
-            'Press Enter to restart',
+            restartText,
             won ? '#00FF00' : '#FF0000'
         );
     }

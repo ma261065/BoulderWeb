@@ -35,9 +35,10 @@ const SPRITE_PATHS = {
     exit: 'images/exit.bmp'
 };
 
-// Updated game settings to accommodate larger grid
 const GAME_SETTINGS = {
-    initialTime: 180, // Increased time for larger grid
+    gameUpdateInterval: 150, // Consistent frame rate for all entities and player (5 frames per second)
+    timerUpdateInterval: 1000, // The one second level timer
+    initialTime: 180,
     baseDiamondsNeeded: 10,
     diamondsIncrementPerLevel: 3,
     baseWallCount: 50,
@@ -45,6 +46,4 @@ const GAME_SETTINGS = {
     baseBoulderCount: 20,
     boulderIncrementPerLevel: 4,
     extraDiamonds: 10,
-    gameUpdateInterval: 100, // milliseconds
-    timerUpdateInterval: 1000 // milliseconds
 };

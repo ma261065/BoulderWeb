@@ -159,6 +159,13 @@ canvas {
     touch-action: manipulation;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
     transition: background-color 0.2s, transform 0.2s;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: translate(-50%, -50%) scale(1); }
+    50% { transform: translate(-50%, -50%) scale(1.05); }
+    100% { transform: translate(-50%, -50%) scale(1); }
 }
 
 #restart-button:hover {
@@ -168,6 +175,7 @@ canvas {
 #restart-button:active {
     transform: translate(-50%, -48%);
     background-color: #3d8b40;
+    animation: none;
 }
 
 /* Mobile responsiveness for the button */

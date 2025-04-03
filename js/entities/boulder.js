@@ -10,12 +10,12 @@ class Boulder extends Entity {
         this.falling = false;
         this.rolling = false;
         
-        // Check if there's empty space below
+        // Check if there's empty space below - ONE TILE MOVEMENT ONLY
         if (Entity.isInBounds(this.x, this.y + 1) && grid[this.y + 1][this.x] === ENTITY_TYPES.EMPTY) {
             // Mark the current position as empty
             grid[this.y][this.x] = ENTITY_TYPES.EMPTY;
             
-            // Move down
+            // Move down ONE tile
             this.y++;
             
             // Update the new position on the grid
@@ -24,7 +24,7 @@ class Boulder extends Entity {
             this.falling = true;
             return true;
         } 
-        // Check if it can roll off another boulder or diamond
+        // Check if it can roll off another boulder or diamond - ONE TILE MOVEMENT ONLY
         else if (Entity.isInBounds(this.x, this.y + 1) && 
                 (grid[this.y + 1][this.x] === ENTITY_TYPES.BOULDER || grid[this.y + 1][this.x] === ENTITY_TYPES.DIAMOND)) {
             
@@ -37,7 +37,7 @@ class Boulder extends Entity {
                 // Mark the current position as empty
                 grid[this.y][this.x] = ENTITY_TYPES.EMPTY;
                 
-                // Move left
+                // Move left ONE tile
                 this.x--;
                 
                 // Update the new position on the grid
@@ -56,7 +56,7 @@ class Boulder extends Entity {
                 // Mark the current position as empty
                 grid[this.y][this.x] = ENTITY_TYPES.EMPTY;
                 
-                // Move right
+                // Move right ONE tile
                 this.x++;
                 
                 // Update the new position on the grid
