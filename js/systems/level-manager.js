@@ -190,8 +190,21 @@ class LevelManager {
     }
     
     getMovingEntities() {
-        return this.entityInstances.filter(entity => 
+        // Find all boulders and diamonds and return them for physics processing
+        const movingEntities = this.entityInstances.filter(entity => 
             entity.type === ENTITY_TYPES.BOULDER || entity.type === ENTITY_TYPES.DIAMOND);
+        
+        // Log count for debugging
+        console.log(`Found ${movingEntities.length} moving entities`);
+        
+        // Ensure we have actual entity objects, not just data
+        for (const entity of movingEntities) {
+            if (typeof entity.update !== 'function') {
+                console.error('Invalid entity found:', entity);
+            }
+        }
+        
+        return movingEntities;
     }
     
     removeEntityAtPosition(x, y) {
@@ -208,7 +221,7 @@ class LevelManager {
     }
     
     updateEntityPosition(type, oldX, oldY, newX, newY) {
-        // First, look for exact position match
+        // First, try to find exact position match
         let entity = this.entityInstances.find(e => 
             e.type === type && e.x === oldX && e.y === oldY);
         
@@ -221,13 +234,7 @@ class LevelManager {
         }
             
         if (entity) {
-            this.logger.debug('Updating entity position', { 
-                type: Object.keys(ENTITY_TYPES).find(k => ENTITY_TYPES[k] === type),
-                oldX, 
-                oldY, 
-                newX, 
-                newY 
-            });
+            console.log(`Updating entity position: type=${type}, (${oldX},${oldY}) -> (${newX},${newY})`);
             
             entity.x = newX;
             entity.y = newY;
@@ -235,10 +242,7 @@ class LevelManager {
         }
         
         // If entity wasn't found, create a new one at the destination
-        this.logger.warn('Entity not found for position update, creating new entity', {
-            type: Object.keys(ENTITY_TYPES).find(k => ENTITY_TYPES[k] === type),
-            oldX, oldY, newX, newY
-        });
+        console.warn(`Entity not found for position update, creating new entity: type=${type}, (${oldX},${oldY}) -> (${newX},${newY})`);
         
         let newEntity = null;
         switch (type) {

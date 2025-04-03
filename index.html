@@ -56,5 +56,112 @@
             window.gameInstance = new Game();
         });
     </script>
+
+    <script>
+    // Create and show splash screen
+    function showSplashScreen() {
+        // Create splash screen container
+        const splash = document.createElement('div');
+        splash.id = 'splash-screen';
+        splash.style.position = 'fixed';
+        splash.style.top = '0';
+        splash.style.left = '0';
+        splash.style.width = '100%';
+        splash.style.height = '100%';
+        splash.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+        splash.style.display = 'flex';
+        splash.style.flexDirection = 'column';
+        splash.style.justifyContent = 'center';
+        splash.style.alignItems = 'center';
+        splash.style.zIndex = '1000';
+        splash.style.color = 'white';
+        splash.style.fontFamily = 'Arial, sans-serif';
+        
+        // Add game title
+        const title = document.createElement('h1');
+        title.textContent = 'BOULDER';
+        title.style.fontSize = '48px';
+        title.style.margin = '0 0 20px 0';
+        title.style.textShadow = '0 0 10px #00FFFF';
+        splash.appendChild(title);
+        
+        // Add game subtitle
+        const subtitle = document.createElement('p');
+        subtitle.textContent = 'A Boulder Dash Clone';
+        subtitle.style.fontSize = '24px';
+        subtitle.style.margin = '0 0 40px 0';
+        splash.appendChild(subtitle);
+        
+        // Add instructions
+        const instructions = document.createElement('div');
+        instructions.innerHTML = `
+            <p style="margin: 5px 0; font-size: 18px;">Collect diamonds and reach the exit</p>
+            <p style="margin: 5px 0; font-size: 18px;">Use arrow keys or swipe to move</p>
+            <p style="margin: 5px 0; font-size: 18px;">Avoid falling boulders!</p>
+        `;
+        instructions.style.textAlign = 'center';
+        instructions.style.marginBottom = '40px';
+        splash.appendChild(instructions);
+        
+        // Add start button
+        const startButton = document.createElement('button');
+        startButton.textContent = 'Start Game';
+        startButton.style.padding = '15px 40px';
+        startButton.style.fontSize = '24px';
+        startButton.style.backgroundColor = '#4CAF50';
+        startButton.style.color = 'white';
+        startButton.style.border = 'none';
+        startButton.style.borderRadius = '8px';
+        startButton.style.cursor = 'pointer';
+        
+        // Add button effects
+        startButton.style.transition = 'all 0.2s ease';
+        startButton.addEventListener('mouseover', () => {
+            startButton.style.backgroundColor = '#45a049';
+            startButton.style.transform = 'scale(1.05)';
+        });
+        startButton.addEventListener('mouseout', () => {
+            startButton.style.backgroundColor = '#4CAF50';
+            startButton.style.transform = 'scale(1)';
+        });
+        
+        // Add click handler to start the game
+        startButton.addEventListener('click', () => {
+            splash.style.opacity = '0';
+            splash.style.transition = 'opacity 0.5s ease';
+            
+            // Remove splash after animation
+            setTimeout(() => {
+                splash.remove();
+                
+                // Initialize game
+                if (window.gameInstance) {
+                    // If game was already created but paused, resume it
+                    if (typeof window.gameInstance.resume === 'function') {
+                        window.gameInstance.resume();
+                    }
+                } else {
+                    // Create game instance
+                    window.gameInstance = new Game();
+                }
+            }, 500);
+        });
+        
+        splash.appendChild(startButton);
+        
+        // Add to document
+        document.body.appendChild(splash);
+    }
+
+    // Show splash screen when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM fully loaded, showing splash screen...');
+        showSplashScreen();
+        
+        // Preload game assets while splash screen is shown
+        const spriteManager = new SpriteManager();
+        const soundManager = new SoundManager();
+    });
+    </script>
 </body>
 </html>

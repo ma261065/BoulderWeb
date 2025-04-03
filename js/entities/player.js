@@ -64,7 +64,7 @@ class Player extends Entity {
                 // Force immediate entity sync to avoid visual glitches
                 game.syncEntitiesWithGrid();
                 
-                // Update viewport if renderer supports it
+                // Force immediate viewport update
                 this.updateViewport(game);
                 
                 return true;
@@ -81,7 +81,7 @@ class Player extends Entity {
         } else if (destType === ENTITY_TYPES.DIAMOND) {
             soundManager.playSound('diamond');
             
-            // CRITICAL FIX: Always collect diamond and allow movement
+            // Collect diamond and allow movement
             game.collectDiamond();
             
             // Remove the diamond from the grid and entity list
@@ -102,21 +102,21 @@ class Player extends Entity {
         // Force immediate entity sync to avoid visual glitches
         game.syncEntitiesWithGrid();
         
-        // Update viewport if renderer supports it
+        // Force immediate viewport update to maintain player centering
         this.updateViewport(game);
         
         return true;
     }
     
     // Helper method for viewport updates to avoid code duplication
+    // Update the viewport update method to always center on player
     updateViewport(game) {
-        if (game.renderer && typeof game.renderer.updateViewportPosition === 'function') {
-            // This will center viewport on player if needed
-            const viewportChanged = game.renderer.updateViewportPosition();
-            if (viewportChanged) {
-                // Force redraw if the viewport changed
-                game.renderer.drawGame();
-            }
-        }
+        if (game.renderer) {
+            // Always center the viewport on the player
+            game.renderer.centerViewportOnPlayer();
+        
+            // Force redraw
+            game.renderer.drawGame();
     }
+}
 }

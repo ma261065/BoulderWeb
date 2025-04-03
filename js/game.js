@@ -66,11 +66,16 @@ class Game {
                 this.timeLeft
             );
             
+            this.initializeCursorBehavior();
+            
             // Ensure the viewport is centered on the player
             this.renderer.centerViewportOnPlayer();
             
             // Ensure initial game state is drawn
             this.renderer.drawGame();
+            
+            // Handle orientation changes for mobile
+            this.setupOrientationHandler();
             
             // Start game loops
             this.startGameLoop();
@@ -83,8 +88,56 @@ class Game {
         }
     }
     
+    initializeCursorBehavior() {
+        // Get the canvas element
+        const canvas = document.getElementById('gameCanvas');
+        
+        // Timer variable to track inactivity
+        let cursorTimeout;
+        
+        // Function to hide cursor after inactivity
+        const hideCursor = () => {
+            canvas.style.cursor = 'none';
+        };
+        
+        // Set cursor to visible whenever mouse moves
+        canvas.addEventListener('mousemove', () => {
+            // Show cursor
+            canvas.style.cursor = 'default';
+            
+            // Clear previous timeout if any
+            if (cursorTimeout) {
+                clearTimeout(cursorTimeout);
+            }
+            
+            // Set new timeout to hide cursor after 2 seconds of inactivity
+            cursorTimeout = setTimeout(hideCursor, 2000);
+        });
+        
+        // Hide cursor when mouse leaves the canvas
+        canvas.addEventListener('mouseleave', () => {
+            canvas.style.cursor = 'default';
+            if (cursorTimeout) {
+                clearTimeout(cursorTimeout);
+            }
+        });
+        
+        // Hide cursor when game starts (after a brief delay)
+        setTimeout(hideCursor, 2000);
+    }
+    
     startNewLevel(level) {
         this.logger.info(`Starting level ${level}`);
+        
+        // Cancel existing loops if they exist
+        if (this.gameLoopId) {
+            cancelAnimationFrame(this.gameLoopId);
+            this.gameLoopId = null;
+        }
+        if (this.timerIntervalId) {
+            clearInterval(this.timerIntervalId);
+            this.timerIntervalId = null;
+        }
         
         // Reset level-specific state
         const levelData = this.levelManager.createLevel(level);
@@ -96,7 +149,7 @@ class Game {
         this.hasExitAppeared = false;
         this.timeLeft = this.config.get('time.initialTime');
         this.diamondsNeeded = this.config.get('levels.baseDiamondsNeeded') + 
-                               (level * this.config.get('levels.diamondsIncrementPerLevel'));
+                            (level * this.config.get('levels.diamondsIncrementPerLevel'));
         this.isGameOver = false;
         
         // Update UI
@@ -111,7 +164,7 @@ class Game {
         this.renderer.calculateViewport();
         this.renderer.centerViewportOnPlayer();
         
-        // Draw initial state
+        // Draw initial state - this will clear any message overlays
         this.renderer.drawGame();
         
         // Start game loops
@@ -168,13 +221,49 @@ class Game {
             }
         }, timerInterval);
     }
+
+    // Add orientation change handling
+    setupOrientationHandler() {
+        // Initial check
+        this.handleOrientationChange();
+        
+        // Add listener for orientation changes
+        window.addEventListener('resize', () => {
+            this.handleOrientationChange();
+        });
+        
+        // If device orientation API is available, use it too
+        if (window.DeviceOrientationEvent) {
+            window.addEventListener('orientationchange', () => {
+                this.handleOrientationChange();
+            });
+        }
+    }
+
+    handleOrientationChange() {
+        // Recalculate viewport
+        this.renderer.handleResize();
+        
+        // Update touch controls layout if available
+        if (this.inputManager && typeof this.inputManager.updateTouchControlsForOrientation === 'function') {
+            this.inputManager.updateTouchControlsForOrientation();
+        }
+        
+        // Center viewport on player
+        this.renderer.centerViewportOnPlayer();
+        
+        // Force redraw
+        this.renderer.drawGame();
+    }
     
+    // Enhance the update method to always update viewport position when player exists
     update() {
         if (this.isGameOver) return;
         
         let somethingChanged = false;
         
-        // Process moving entities (boulders and diamonds)
+        // IMPORTANT: Process moving entities (boulders and diamonds) FIRST before viewport updates
+        // This ensures physics updates happen correctly
         const movingEntities = this.levelManager.getMovingEntities();
         
         // First, sort entities from bottom to top for natural falling
@@ -232,15 +321,16 @@ class Game {
             }
         }
         
+        // AFTER processing physics, now check if viewport needs updating
+        // This prevents viewport updates from interfering with physics calculations
+        if (this.player && this.renderer) {
+            const viewportChanged = this.renderer.updateViewportPosition();
+            somethingChanged = somethingChanged || viewportChanged;
+        }
+        
         // Sync entity list with grid - ensure all entities match the grid state
         // This is necessary to fix issues with entities disappearing or duplicating
         this.syncEntitiesWithGrid();
-        
-        // Always redraw if we processed any moving entities, even if they didn't change
-        // This ensures continuous visual updates
-        if (movingEntities.length > 0 || somethingChanged) {
-            this.renderer.drawGame();
-        }
             
         // Check if exit should appear
         if (!this.hasExitAppeared && this.diamondsCollected >= this.diamondsNeeded) {
@@ -248,9 +338,6 @@ class Game {
             this.hasExitAppeared = true;
             somethingChanged = true;
         }
-        
-        // Sync entity list with grid
-        this.syncEntitiesWithGrid();
         
         // Redraw if something changed
         if (somethingChanged) {
@@ -321,25 +408,40 @@ class Game {
         );
     }
     
-    restart() {
+    restart() {       
+        // Reset game state
+        this.isGameOver = false;
+        
         // Restart current level
         this.startNewLevel(this.levelManager.getCurrentLevel());
     }
     
     // Ensure entities match grid state
     syncEntitiesWithGrid() {
+        console.log("Synchronizing entities with grid...");
+        
         // More robust entity synchronization
         const entitiesToKeep = [];
         
         // Add player first - player is always needed
         if (this.player) {
             entitiesToKeep.push(this.player);
+            console.log(`Added player at (${this.player.x}, ${this.player.y})`);
         }
         
-        // Iterate through grid and build entity list
+        // Get grid dimensions from config
         const gridWidth = this.config.get('grid.width');
         const gridHeight = this.config.get('grid.height');
         
+        // Count entities by type before sync
+        const initialCounts = {};
+        this.levelManager.entityInstances.forEach(entity => {
+            const typeName = Object.keys(ENTITY_TYPES).find(key => ENTITY_TYPES[key] === entity.type) || 'UNKNOWN';
+            initialCounts[typeName] = (initialCounts[typeName] || 0) + 1;
+        });
+        console.log("Entities before sync:", initialCounts);
+        
+        // Iterate through grid and build entity list
         for (let y = 0; y < gridHeight; y++) {
             for (let x = 0; x < gridWidth; x++) {
                 const tileType = this.grid[y][x];
@@ -351,10 +453,17 @@ class Game {
                 }
                 
                 // Find or create entity for this tile
-                const existingEntity = this.levelManager.entityInstances.find(e => 
-                    e.x === x && e.y === y && e.type === tileType && e !== this.player);
+                let existingEntity = this.levelManager.entityInstances.find(e => 
+                    e.x === x && e.y === y && e.type === tileType);
                 
                 if (existingEntity) {
+                    // Make sure x and y match grid position (defensive)
+                    if (existingEntity.x !== x || existingEntity.y !== y) {
+                        console.warn(`Fixing misaligned entity position: from (${existingEntity.x},${existingEntity.y}) to (${x},${y})`);
+                        existingEntity.x = x;
+                        existingEntity.y = y;
+                    }
+                    
                     entitiesToKeep.push(existingEntity);
                 } else {
                     // Create a new entity if needed
@@ -368,6 +477,7 @@ class Game {
                             break;
                         case ENTITY_TYPES.BOULDER:
                             newEntity = new Boulder(x, y);
+                            console.log(`Created new Boulder at (${x}, ${y})`);
                             break;
                         case ENTITY_TYPES.DIAMOND:
                             newEntity = new Diamond(x, y);
@@ -384,11 +494,24 @@ class Game {
             }
         }
         
-        // Log entity synchronization details
-        this.logger.debug('Entity synchronization', {
-            originalCount: this.levelManager.entityInstances.length,
-            newCount: entitiesToKeep.length
+        // Count entities by type after sync
+        const finalCounts = {};
+        entitiesToKeep.forEach(entity => {
+            const typeName = Object.keys(ENTITY_TYPES).find(key => ENTITY_TYPES[key] === entity.type) || 'UNKNOWN';
+            finalCounts[typeName] = (finalCounts[typeName] || 0) + 1;
         });
+        
+        // Log entity synchronization details
+        console.log("Entities after sync:", finalCounts);
+        console.log(`Entity synchronization: ${this.levelManager.entityInstances.length} -> ${entitiesToKeep.length}`);
+        
+        // Check for missing boulders
+        const oldBoulders = this.levelManager.entityInstances.filter(e => e.type === ENTITY_TYPES.BOULDER).length;
+        const newBoulders = entitiesToKeep.filter(e => e.type === ENTITY_TYPES.BOULDER).length;
+        
+        if (oldBoulders !== newBoulders) {
+            console.warn(`Boulder count changed during sync: ${oldBoulders} -> ${newBoulders}`);
+        }
         
         // Replace entity instances with synchronized list
         this.levelManager.entityInstances = entitiesToKeep;

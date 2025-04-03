@@ -3,6 +3,8 @@ class InputManager {
         this.game = game;
         this.keysPressed = new Set();
         this.lastMoveTime = 0;
+        this.touchControls = null;
+        this.isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
         
         // Use config for move delay
         this.moveDelay = this.game.config.get('player.moveDelay') || 150;
@@ -16,15 +18,26 @@ class InputManager {
         window.addEventListener('keydown', this.handleKeyDown.bind(this));
         window.addEventListener('keyup', this.handleKeyUp.bind(this));
         
-        // Optional: Touch/mobile support
-        this.initializeTouchControls();
+        // Initialize touch controls if on a touch-enabled device
+        if (this.isTouchDevice) {
+            this.initializeTouchControls();
+        }
     }
     
     initializeTouchControls() {
         const gameContainer = document.getElementById('game-container');
         
+        // Remove existing touch controls if any
+        const existingControls = document.getElementById('touch-controls');
+        if (existingControls) {
+            existingControls.remove();
+        }
+        
         // Create touch control overlay
-        this.createTouchControlOverlay(gameContainer);
+        this.touchControls = this.createTouchControlOverlay(gameContainer);
+        
+        // Add swipe detection
+        this.addSwipeDetection();
     }
     
     createTouchControlOverlay(container) {
@@ -32,75 +45,177 @@ class InputManager {
         const touchControls = document.createElement('div');
         touchControls.id = 'touch-controls';
         
-        // Styling to prevent overlapping and improve usability
-        Object.assign(touchControls.style, {
-            position: 'absolute',
-            bottom: '0',
-            left: '0',
-            right: '0',
-            display: 'flex',
-            justifyContent: 'center',
-            padding: '10px',
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            zIndex: '10'
-        });
-        
         // Create directional buttons
         const directions = [
-            { key: 'ArrowUp', label: '↑' },
-            { key: 'ArrowDown', label: '↓' },
-            { key: 'ArrowLeft', label: '←' },
-            { key: 'ArrowRight', label: '→' }
+            { key: 'ArrowUp', label: '↑', id: 'btn-up' },
+            { key: 'ArrowLeft', label: '←', id: 'btn-left' },
+            { key: 'ArrowRight', label: '→', id: 'btn-right' },
+            { key: 'ArrowDown', label: '↓', id: 'btn-down' }
         ];
+        
+        // Create a layout container for d-pad style controls
+        const dpad = document.createElement('div');
+        dpad.id = 'dpad';
+        dpad.style.display = 'grid';
+        dpad.style.gridTemplateAreas = '"up up" "left right" "down down"';
+        dpad.style.gridGap = '5px';
+        dpad.style.margin = '0 auto';
+        dpad.style.width = '150px';
         
         directions.forEach(dir => {
             const button = document.createElement('button');
             button.textContent = dir.label;
+            button.id = dir.id;
             button.dataset.key = dir.key;
             
-            // Styling for touch buttons
-            Object.assign(button.style, {
-                margin: '0 10px',
-                padding: '10px 15px',
-                fontSize: '16px',
-                backgroundColor: 'rgba(255,255,255,0.2)',
-                color: 'white',
-                border: '1px solid rgba(255,255,255,0.5)',
-                borderRadius: '5px',
-                cursor: 'pointer'
-            });
+            // Set grid area for d-pad layout
+            switch (dir.key) {
+                case 'ArrowUp': button.style.gridArea = 'up'; break;
+                case 'ArrowDown': button.style.gridArea = 'down'; break;
+                case 'ArrowLeft': button.style.gridArea = 'left'; break;
+                case 'ArrowRight': button.style.gridArea = 'right'; break;
+            }
             
-            // Touch and mouse event handlers
-            button.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                this.handleDirectionalInput(dir.key);
-                button.style.backgroundColor = 'rgba(255,255,255,0.4)';
-            }, { passive: false });
+            // Better sizing for touch targets
+            button.style.padding = '15px';
+            button.style.fontSize = '24px';
+            button.style.backgroundColor = 'rgba(255,255,255,0.2)';
+            button.style.color = 'white';
+            button.style.border = '1px solid rgba(255,255,255,0.5)';
+            button.style.borderRadius = '5px';
+            button.style.touchAction = 'manipulation'; // Prevent double-tap zoom
             
-            button.addEventListener('touchend', () => {
-                button.style.backgroundColor = 'rgba(255,255,255,0.2)';
-            });
+            // Event handlers for both touch and mouse
+            this.addButtonEventListeners(button, dir.key);
             
-            button.addEventListener('mousedown', (e) => {
-                this.handleDirectionalInput(dir.key);
-                button.style.backgroundColor = 'rgba(255,255,255,0.4)';
-            });
-            
-            button.addEventListener('mouseup', () => {
-                button.style.backgroundColor = 'rgba(255,255,255,0.2)';
-            });
-            
-            touchControls.appendChild(button);
+            dpad.appendChild(button);
         });
         
+        touchControls.appendChild(dpad);
         container.appendChild(touchControls);
+        
+        return touchControls;
+    }
+    
+    addButtonEventListeners(button, key) {
+        // Touch event handlers
+        button.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            this.handleDirectionalInput(key);
+            button.style.backgroundColor = 'rgba(255,255,255,0.4)';
+            
+            // Enable continuous movement while button is held
+            this.startContinuousMovement(key);
+        });
+        
+        button.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            button.style.backgroundColor = 'rgba(255,255,255,0.2)';
+            this.stopContinuousMovement();
+        });
+        
+        // Mouse event handlers (for testing on desktop)
+        button.addEventListener('mousedown', (e) => {
+            this.handleDirectionalInput(key);
+            button.style.backgroundColor = 'rgba(255,255,255,0.4)';
+            
+            // Enable continuous movement while button is held
+            this.startContinuousMovement(key);
+        });
+        
+        button.addEventListener('mouseup', () => {
+            button.style.backgroundColor = 'rgba(255,255,255,0.2)';
+            this.stopContinuousMovement();
+        });
+        
+        button.addEventListener('mouseleave', () => {
+            button.style.backgroundColor = 'rgba(255,255,255,0.2)';
+            this.stopContinuousMovement();
+        });
+    }
+    
+    // Enable continuous movement when holding a direction
+    startContinuousMovement(key) {
+        // Clear any existing interval
+        this.stopContinuousMovement();
+        
+        // Store the key being held
+        this.heldKey = key;
+        
+        // Set an interval to repeatedly move in that direction
+        this.moveInterval = setInterval(() => {
+            this.handleDirectionalInput(this.heldKey);
+        }, this.moveDelay);
+    }
+    
+    stopContinuousMovement() {
+        if (this.moveInterval) {
+            clearInterval(this.moveInterval);
+            this.moveInterval = null;
+        }
+        this.heldKey = null;
+    }
+    
+    addSwipeDetection() {
+        const canvas = document.getElementById('gameCanvas');
+        
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchEndX = 0;
+        let touchEndY = 0;
+        
+        // Detect touch start position
+        canvas.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, false);
+        
+        // Detect touch end position and determine swipe direction
+        canvas.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            touchEndY = e.changedTouches[0].screenY;
+            
+            this.handleSwipe(touchStartX, touchStartY, touchEndX, touchEndY);
+        }, false);
+    }
+    
+    handleSwipe(startX, startY, endX, endY) {
+        // Calculate distance of swipe
+        const deltaX = endX - startX;
+        const deltaY = endY - startY;
+        
+        // Minimum distance for a swipe
+        const minSwipeDistance = 30;
+        
+        // Determine direction based on which axis had the greater movement
+        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+            // Horizontal swipe
+            if (Math.abs(deltaX) > minSwipeDistance) {
+                if (deltaX > 0) {
+                    this.handleDirectionalInput('ArrowRight');
+                } else {
+                    this.handleDirectionalInput('ArrowLeft');
+                }
+            }
+        } else {
+            // Vertical swipe
+            if (Math.abs(deltaY) > minSwipeDistance) {
+                if (deltaY > 0) {
+                    this.handleDirectionalInput('ArrowDown');
+                } else {
+                    this.handleDirectionalInput('ArrowUp');
+                }
+            }
+        }
     }
     
     handleDirectionalInput(key) {
         // Check if game is over
         if (this.game.isGameOver) {
             if (key === 'Enter') {
+                console.log("Enter input received while game over - restarting game");
                 this.game.restart();
+                return;
             }
             return;
         }
@@ -121,7 +236,17 @@ class InputManager {
         // Game over restart
         if (this.game.isGameOver) {
             if (e.key === 'Enter') {
-                this.game.restart();
+                e.preventDefault(); // Prevent default behavior
+                
+                // First remove any restart button that might be present
+                const existingButton = document.getElementById('restart-button');
+                if (existingButton) {
+                    existingButton.remove();
+                }
+                
+                // Create a completely new game instance
+                window.gameInstance = new Game();
+                return;
             }
             return;
         }
@@ -200,5 +325,31 @@ class InputManager {
         }
         
         return false;
+    }
+    
+    // Add a method to toggle touch controls visibility
+    toggleTouchControls(show) {
+        if (this.touchControls) {
+            this.touchControls.style.display = show ? 'block' : 'none';
+        }
+    }
+    
+    // Method to improve touch controls based on screen orientation
+    updateTouchControlsForOrientation() {
+        if (!this.isTouchDevice || !this.touchControls) return;
+        
+        const isLandscape = window.innerWidth > window.innerHeight;
+        
+        if (isLandscape) {
+            // Position controls on the left side in landscape mode
+            this.touchControls.style.left = '20px';
+            this.touchControls.style.bottom = '20px';
+            this.touchControls.style.right = 'auto';
+        } else {
+            // Position controls centered at bottom in portrait mode
+            this.touchControls.style.left = '0';
+            this.touchControls.style.right = '0';
+            this.touchControls.style.bottom = '20px';
+        }
     }
 }

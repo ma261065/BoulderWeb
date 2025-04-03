@@ -1,4 +1,4 @@
-// Updated Renderer class with fixed vertical handling
+// Updated Renderer class with improved player tracking
 
 class Renderer {
     constructor(game) {
@@ -65,11 +65,16 @@ class Renderer {
     centerViewportOnPlayer() {
         if (!this.game || !this.game.player) return;
         
-        // Center viewport on player position
+        // Calculate viewport position that centers the player
         this.viewport.x = Math.floor(this.game.player.x - this.viewport.width / 2);
         this.viewport.y = Math.floor(this.game.player.y - this.viewport.height / 2);
         
-        // Clamp to grid boundaries
+        // Clamp viewport to grid boundaries
+        this.clampViewport();
+    }
+    
+    clampViewport() {
+        // Ensure viewport stays within grid boundaries
         this.viewport.x = Math.max(0, Math.min(GRID_WIDTH - this.viewport.width, this.viewport.x));
         this.viewport.y = Math.max(0, Math.min(GRID_HEIGHT - this.viewport.height, this.viewport.y));
     }
@@ -82,34 +87,22 @@ class Renderer {
         
         // Only update if we're not showing the full grid
         if (this.viewport.width < GRID_WIDTH || this.viewport.height < GRID_HEIGHT) {
-            // Define margins (20% of viewport size)
-            const marginX = Math.max(1, Math.floor(this.viewport.width * 0.2));
-            const marginY = Math.max(1, Math.floor(this.viewport.height * 0.2));
+            // Always center the viewport on the player
+            // Calculate ideal center position
+            const idealX = Math.floor(playerX - this.viewport.width / 2);
+            const idealY = Math.floor(playerY - this.viewport.height / 2);
             
+            // Check if viewport position needs to change
             let changed = false;
-            
-            // Scroll viewport if player is too close to the edge
-            if (playerX < this.viewport.x + marginX) {
-                this.viewport.x = Math.max(0, playerX - marginX);
-                changed = true;
-            } else if (playerX >= this.viewport.x + this.viewport.width - marginX) {
-                this.viewport.x = Math.min(
-                    GRID_WIDTH - this.viewport.width, 
-                    playerX + marginX - this.viewport.width
-                );
+            if (this.viewport.x !== idealX || this.viewport.y !== idealY) {
+                // Update viewport to center on player
+                this.viewport.x = idealX;
+                this.viewport.y = idealY;
                 changed = true;
             }
             
-            if (playerY < this.viewport.y + marginY) {
-                this.viewport.y = Math.max(0, playerY - marginY);
-                changed = true;
-            } else if (playerY >= this.viewport.y + this.viewport.height - marginY) {
-                this.viewport.y = Math.min(
-                    GRID_HEIGHT - this.viewport.height, 
-                    playerY + marginY - this.viewport.height
-                );
-                changed = true;
-            }
+            // Ensure viewport stays within grid boundaries
+            this.clampViewport();
             
             return changed;
         }
@@ -124,7 +117,7 @@ class Renderer {
             return;
         }
         
-        // Clear canvas
+        // Clear the entire canvas first
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
         // Draw black background
@@ -236,8 +229,32 @@ class Renderer {
             this.ctx.fill();
         }
     }
+
+    addRestartButton() {
+        // Remove any existing restart button first
+        this.removeRestartButton();
+        
+        // Create restart button
+        const restartButton = document.createElement('button');
+        restartButton.id = 'restart-button';
+        restartButton.textContent = 'Restart Game';
+        
+        // Add click handler that creates a completely new game instance
+        restartButton.addEventListener('click', () => {
+            this.removeRestartButton();
+            window.gameInstance = new Game();
+        });
+        
+        // Add to document body
+        document.body.appendChild(restartButton);
+    }
     
-    // Drawing methods - all use the fixed tile size
+    removeRestartButton() {
+        const existingButton = document.getElementById('restart-button');
+        if (existingButton) {
+            existingButton.remove();
+        }
+    }
     
     drawWall(x, y) {
         if (window.spriteManager && window.spriteManager.getSprite('wall')) {
@@ -314,6 +331,9 @@ class Renderer {
             this.ctx.font = '24px Arial';
             this.ctx.fillText(subMessage, this.canvas.width / 2, this.canvas.height / 2 + 20);
         }
+        
+        // Add restart button for mobile devices
+        this.addRestartButton();
     }
     
     updateUI(level, diamondsCollected, diamondsNeeded, timeLeft) {

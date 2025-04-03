@@ -78,55 +78,166 @@ canvas {
 
 /* Touch controls styling */
 #touch-controls {
-    position: absolute;
-    bottom: 10px;
+    position: fixed;
+    bottom: 20px;
     left: 0;
     right: 0;
     display: flex;
     justify-content: center;
-    padding: 5px;
-    background-color: rgba(0,0,0,0.5);
-    z-index: 10;
+    padding: 10px;
+    z-index: 100;
+    pointer-events: none; /* Allow clicks to pass through the container */
 }
 
-#touch-controls button {
-    margin: 0 5px;
-    padding: 8px 12px;
-    font-size: 14px;
-    background-color: rgba(255,255,255,0.2);
+#dpad {
+    display: grid;
+    grid-template-areas: 
+        ". up ."
+        "left . right"
+        ". down .";
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    grid-gap: 5px;
+    width: 180px;
+    height: 180px;
+    pointer-events: all; /* Re-enable events for the D-pad */
+}
+
+#dpad button {
+    margin: 0;
+    padding: 0;
+    font-size: 24px;
+    font-weight: bold;
     color: white;
-    border: 1px solid rgba(255,255,255,0.5);
-    border-radius: 5px;
+    background-color: rgba(0, 0, 0, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    border-radius: 8px;
     cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+    touch-action: manipulation; /* Better touch handling */
 }
 
-#touch-controls button:active {
-    background-color: rgba(255,255,255,0.4);
+#btn-up {
+    grid-area: up;
+    border-radius: 8px 8px 2px 2px !important;
 }
 
-/* Media queries for responsive design */
-@media (max-height: 600px) {
-    h1 {
+#btn-down {
+    grid-area: down;
+    border-radius: 2px 2px 8px 8px !important;
+}
+
+#btn-left {
+    grid-area: left;
+    border-radius: 8px 2px 2px 8px !important;
+}
+
+#btn-right {
+    grid-area: right;
+    border-radius: 2px 8px 8px 2px !important;
+}
+
+#dpad button:active {
+    background-color: rgba(255, 255, 255, 0.4);
+    transform: scale(0.95);
+}
+
+#restart-button {
+    position: fixed;
+    left: 50%;
+    top: 60%;
+    transform: translate(-50%, -50%);
+    padding: 15px 30px;
+    font-size: 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    z-index: 1000;
+    touch-action: manipulation;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    transition: background-color 0.2s, transform 0.2s;
+}
+
+#restart-button:hover {
+    background-color: #45a049;
+}
+
+#restart-button:active {
+    transform: translate(-50%, -48%);
+    background-color: #3d8b40;
+}
+
+/* Mobile responsiveness for the button */
+@media (max-width: 768px) {
+    #restart-button {
+        padding: 12px 24px;
         font-size: 18px;
-        margin: 5px 0;
+    }
+}
+
+@media (max-height: 500px) {
+    #restart-button {
+        top: 65%;
+    }
+}
+
+/* Make touch controls more accessible on small screens */
+@media (max-height: 500px) {
+    #touch-controls {
+        bottom: 5px;
+    }
+    
+    #dpad {
+        width: 150px;
+        height: 150px;
+    }
+    
+    #dpad button {
+        font-size: 20px;
+    }
+}
+
+/* Adjust layout for different orientations */
+@media (orientation: landscape) {
+    #touch-controls {
+        left: 20px;
+        right: auto;
+        bottom: 20px;
+    }
+}
+
+/* Improve visibility of game elements */
+canvas {
+    border: 2px solid #777 !important;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+/* Improve visibility on mobile devices */
+@media (max-width: 768px) {
+    h1 {
+        font-size: 24px;
+        margin: 8px 0;
     }
     
     #info-panel {
-        padding: 2px;
-        margin: 2px auto;
+        border-radius: 8px;
+        margin: 8px auto;
+        padding: 8px;
+        background-color: rgba(0, 0, 0, 0.7);
     }
     
     #level-info, #diamonds-info, #time-info {
         font-size: 14px;
-    }
-    
-    #controls {
-        margin-top: 5px;
-        font-size: 12px;
+        font-weight: bold;
     }
     
     #sound-toggle {
-        padding: 3px 8px;
+        margin: 4px;
+        padding: 6px 10px;
         font-size: 12px;
+        background-color: #444;
     }
 }
