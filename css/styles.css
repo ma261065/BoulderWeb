@@ -80,67 +80,68 @@ canvas {
 #touch-controls {
     position: fixed;
     bottom: 20px;
-    left: 0;
-    right: 0;
-    display: flex;
-    justify-content: center;
-    padding: 10px;
+    left: 20px;
     z-index: 100;
-    pointer-events: none; /* Allow clicks to pass through the container */
+    pointer-events: none;
 }
 
 #dpad {
-    display: grid;
-    grid-template-areas: 
-        ". up ."
-        "left . right"
-        ". down .";
-    grid-template-columns: 1fr 1fr 1fr;
-    grid-template-rows: 1fr 1fr 1fr;
-    grid-gap: 5px;
+    position: relative;
     width: 180px;
     height: 180px;
-    pointer-events: all; /* Re-enable events for the D-pad */
+    border-radius: 50%;
+    pointer-events: all;
+    background-color: rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
 }
 
 #dpad button {
-    margin: 0;
-    padding: 0;
+    position: absolute;
+    width: 90px;
+    height: 90px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    color: white;
     font-size: 24px;
     font-weight: bold;
-    color: white;
-    background-color: rgba(0, 0, 0, 0.5);
-    border: 2px solid rgba(255, 255, 255, 0.7);
-    border-radius: 8px;
     cursor: pointer;
     user-select: none;
-    -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
-    touch-action: manipulation; /* Better touch handling */
-}
-
-#btn-up {
-    grid-area: up;
-    border-radius: 8px 8px 2px 2px !important;
-}
-
-#btn-down {
-    grid-area: down;
-    border-radius: 2px 2px 8px 8px !important;
-}
-
-#btn-left {
-    grid-area: left;
-    border-radius: 8px 2px 2px 8px !important;
-}
-
-#btn-right {
-    grid-area: right;
-    border-radius: 2px 8px 8px 2px !important;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    clip-path: polygon(50% 50%, 0 0, 100% 0);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: background-color 0.1s, transform 0.1s;
 }
 
 #dpad button:active {
     background-color: rgba(255, 255, 255, 0.4);
     transform: scale(0.95);
+}
+
+#btn-up {
+    top: -5px;
+    left: 45px;
+    transform: rotate(-45deg);
+}
+
+#btn-right {
+    top: 45px;
+    right: -5px;
+    transform: rotate(45deg);
+}
+
+#btn-down {
+    bottom: -5px;
+    left: 45px;
+    transform: rotate(135deg);
+}
+
+#btn-left {
+    top: 45px;
+    left: -5px;
+    transform: rotate(-135deg);
 }
 
 #restart-button {
@@ -178,53 +179,13 @@ canvas {
     animation: none;
 }
 
-/* Mobile responsiveness for the button */
+/* Media queries for responsiveness */
 @media (max-width: 768px) {
     #restart-button {
         padding: 12px 24px;
         font-size: 18px;
     }
-}
-
-@media (max-height: 500px) {
-    #restart-button {
-        top: 65%;
-    }
-}
-
-/* Make touch controls more accessible on small screens */
-@media (max-height: 500px) {
-    #touch-controls {
-        bottom: 5px;
-    }
     
-    #dpad {
-        width: 150px;
-        height: 150px;
-    }
-    
-    #dpad button {
-        font-size: 20px;
-    }
-}
-
-/* Adjust layout for different orientations */
-@media (orientation: landscape) {
-    #touch-controls {
-        left: 20px;
-        right: auto;
-        bottom: 20px;
-    }
-}
-
-/* Improve visibility of game elements */
-canvas {
-    border: 2px solid #777 !important;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-}
-
-/* Improve visibility on mobile devices */
-@media (max-width: 768px) {
     h1 {
         font-size: 24px;
         margin: 8px 0;
@@ -248,4 +209,39 @@ canvas {
         font-size: 12px;
         background-color: #444;
     }
+}
+
+@media (max-height: 500px) {
+    #restart-button {
+        top: 65%;
+    }
+    
+    #touch-controls {
+        bottom: 5px;
+        left: 5px;
+    }
+    
+    #dpad {
+        width: 120px;
+        height: 120px;
+    }
+    
+    #dpad button {
+        font-size: 20px;
+    }
+}
+
+/* Adjust layout for different orientations */
+@media (orientation: landscape) {
+    #touch-controls {
+        left: 20px;
+        right: auto;
+        bottom: 20px;
+    }
+}
+
+/* Improve visibility of game elements */
+canvas {
+    border: 2px solid #777 !important;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
 }

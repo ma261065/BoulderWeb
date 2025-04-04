@@ -380,6 +380,41 @@ class InputManager {
         
         return false;
     }
+
+    createTouchControlOverlay(container) {
+        // Create a touch control div
+        const touchControls = document.createElement('div');
+        touchControls.id = 'touch-controls';
+        
+        // Create directional buttons
+        const directions = [
+            { key: 'ArrowUp', label: '↑', id: 'btn-up' },
+            { key: 'ArrowLeft', label: '←', id: 'btn-left' },
+            { key: 'ArrowRight', label: '→', id: 'btn-right' },
+            { key: 'ArrowDown', label: '↓', id: 'btn-down' }
+        ];
+        
+        // Create a layout container for circular d-pad controls
+        const dpad = document.createElement('div');
+        dpad.id = 'dpad';
+        
+        directions.forEach(dir => {
+            const button = document.createElement('button');
+            button.textContent = dir.label;
+            button.id = dir.id;
+            button.dataset.key = dir.key;
+            
+            // Event handlers for both touch and mouse
+            this.addButtonEventListeners(button, dir.key);
+            
+            dpad.appendChild(button);
+        });
+        
+        touchControls.appendChild(dpad);
+        container.appendChild(touchControls);
+        
+        return touchControls;
+    }
     
     toggleTouchControls(show) {
         if (this.touchControls) {
