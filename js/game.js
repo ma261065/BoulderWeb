@@ -174,15 +174,9 @@ class Game {
     startNewLevel(level) {
         this.logger.info(`Starting level ${level}`);
         
-        // Cancel existing loops if they exist
-        if (this.gameLoopId) {
-            cancelAnimationFrame(this.gameLoopId);
-            this.gameLoopId = null;
-        }
-        if (this.timerIntervalId) {
-            clearInterval(this.timerIntervalId);
-            this.timerIntervalId = null;
-        }
+        // Stop any existing loops first
+        this.stopGameLoop();
+        this.stopTimerLoop();
         
         // Reset level-specific state
         const levelData = this.levelManager.createLevel(level);
@@ -206,7 +200,6 @@ class Game {
         );
         
         // Update viewport for new level
-        //this.renderer.calculateViewport();  // Not sure why this doesn't exist any more
         this.renderer.centerViewportOnPlayer();
         
         // Draw initial state - this will clear any message overlays
@@ -237,15 +230,12 @@ class Game {
     }
     
     startGameLoop() {
+        // Clear any existing game loop first
+        this.stopGameLoop();
+        
         const tickInterval = this.config.get('gameLoop.updateInterval');
-        console.log("Game update interval:", tickInterval); // Debug log
         
-        // Clear any existing interval
-        if (this.gameLoopId) {
-            clearInterval(this.gameLoopId);
-        }
-        
-        // Start a new interval at the configured rate
+        // Start a new interval
         this.gameLoopId = setInterval(() => {
             if (!this.isGameOver) {
                 this.tick(); // Process one tick
@@ -256,6 +246,9 @@ class Game {
     }
     
     startTimerLoop() {
+        // Clear any existing timer loop first
+        this.stopTimerLoop();
+        
         const timerInterval = this.config.get('gameLoop.timerInterval');
         
         this.timerIntervalId = setInterval(() => {
@@ -263,6 +256,20 @@ class Game {
                 this.updateTimer();
             }
         }, timerInterval);
+    }
+
+    stopGameLoop() {
+        if (this.gameLoopId) {
+            clearInterval(this.gameLoopId);
+            this.gameLoopId = null;
+        }
+    }
+
+    stopTimerLoop() {
+        if (this.timerIntervalId) {
+            clearInterval(this.timerIntervalId);
+            this.timerIntervalId = null;
+        }
     }
 
     updateTimer() {
@@ -466,17 +473,11 @@ class Game {
     gameOver(won) {
         if (this.isGameOver) return; // Prevent multiple calls
         
+        // Ensure loops are stopped
+        this.stopGameLoop();
+        this.stopTimerLoop();
+    
         this.isGameOver = true;
-        
-        // Cancel existing loops
-        if (this.gameLoopId) {
-            clearInterval(this.gameLoopId);
-            this.gameLoopId = null;
-        }
-        if (this.timerIntervalId) {
-            clearInterval(this.timerIntervalId);
-            this.timerIntervalId = null;
-        }
         
         // Play game over sound
         this.soundManager.playSound('gameOver');
@@ -496,16 +497,9 @@ class Game {
     cleanup() {
         console.log("Cleaning up game resources...");
         
-        // Cancel all intervals and animation frames
-        if (this.gameLoopId) {
-            clearInterval(this.gameLoopId);
-            this.gameLoopId = null;
-        }
-        
-        if (this.timerIntervalId) {
-            clearInterval(this.timerIntervalId);
-            this.timerIntervalId = null;
-        }
+        // Stop game and timer loops
+        this.stopGameLoop();
+        this.stopTimerLoop();
         
         // Clean up event listeners
         if (this.inputManager) {
@@ -526,12 +520,22 @@ class Game {
     }
     
     restart() {
+        // Stop any existing loops
+        this.stopGameLoop();
+        this.stopTimerLoop();
+        
+        // Reset game state
+        this.isGameOver = false;
+        this.diamondsCollected = 0;
+        this.hasExitAppeared = false;
+        this.timeLeft = this.config.get('time.initialTime');
+        this.diamondsNeeded = this.config.get('levels.baseDiamondsNeeded');
+        
         // Show splash screen when game is restarted
         if (typeof endGameAndShowSplash === 'function') {
             endGameAndShowSplash();
         } else {
             // Fallback to original implementation
-            this.isGameOver = false;
             this.startNewLevel(this.levelManager.getCurrentLevel());
         }
     }
