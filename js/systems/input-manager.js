@@ -10,6 +10,7 @@ class InputManager {
         // Key queue system
         this.keyQueue = [];
         this.processingKey = false;
+        this.boundMouseHandlers = {};
         
         // Active touch tracking
         this.activeTouch = null;
@@ -90,77 +91,39 @@ class InputManager {
         return touchControls;
     }
     
+    // Mouse event handlers for touch controls
     addDpadEventListeners(dpad) {
-        // Handle touch start
-        dpad.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            const touch = e.touches[0];
-            this.handleTouchInput(touch, dpad);
-            this.activeTouch = touch.identifier;
-        }, { passive: false });
-        
-        // Handle touch move for sliding between quadrants
-        dpad.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            
-            // Find the active touch
-            for (let i = 0; i < e.changedTouches.length; i++) {
-                if (e.changedTouches[i].identifier === this.activeTouch) {
-                    this.handleTouchInput(e.changedTouches[i], dpad);
-                    break;
-                }
-            }
-        }, { passive: false });
-        
-        // Handle touch end
-        dpad.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            
-            // Reset all button highlights explicitly
-            this.resetAllButtonHighlights();
-            
-            // Check if the ended touch is our active touch
-            for (let i = 0; i < e.changedTouches.length; i++) {
-                if (e.changedTouches[i].identifier === this.activeTouch) {
-                    this.activeTouch = null;
-                    this.currentQuadrant = null;
-                    this.stopContinuousMovement();
-                    break;
-                }
-            }
-        }, { passive: false });
-        
-        // Handle touch cancel
-        dpad.addEventListener('touchcancel', (e) => {
-            this.activeTouch = null;
-            this.currentQuadrant = null;
-            this.stopContinuousMovement();
-        }, { passive: false });
-        
-        // Mouse event handlers for testing on desktop
+        // Existing touch event listeners can remain the same
+    
+        // Modify mouse event listeners to ensure clean state management
         dpad.addEventListener('mousedown', (e) => {
-            this.handleMouseInput(e, dpad);
+            e.preventDefault();
             this.activeTouch = 'mouse';
+            this.resetAllButtonStates(); // Reset ALL button states first
+            this.handleMouseInput(e, dpad);
         });
-        
+    
         dpad.addEventListener('mousemove', (e) => {
+            e.preventDefault();
             if (this.activeTouch === 'mouse') {
+                this.resetAllButtonStates(); // Reset ALL button states first
                 this.handleMouseInput(e, dpad);
             }
         });
-        
-        dpad.addEventListener('mouseup', () => {
-            // Reset all button highlights explicitly
-            this.resetAllButtonHighlights();
-            
+    
+        dpad.addEventListener('mouseup', (e) => {
+            e.preventDefault();
             this.activeTouch = null;
             this.currentQuadrant = null;
+            this.resetAllButtonStates(); // Reset ALL button states
             this.stopContinuousMovement();
         });
-        
-        dpad.addEventListener('mouseleave', () => {
+    
+        dpad.addEventListener('mouseleave', (e) => {
+            e.preventDefault();
             this.activeTouch = null;
             this.currentQuadrant = null;
+            this.resetAllButtonStates(); // Reset ALL button states
             this.stopContinuousMovement();
         });
     }
@@ -215,6 +178,24 @@ class InputManager {
         }
     }
     
+    resetAllButtonStates() {
+        const buttons = [
+            document.getElementById('btn-up'),
+            document.getElementById('btn-right'),
+            document.getElementById('btn-down'),
+            document.getElementById('btn-left')
+        ];
+        
+        buttons.forEach(button => {
+            if (button) {
+                // Remove any active classes
+                button.classList.remove('active-btn');
+                // Ensure it's marked as inactive
+                button.classList.add('inactive');
+            }
+        });
+    }
+
     handleMouseInput(e, dpad) {
         const rect = dpad.getBoundingClientRect();
         
@@ -232,6 +213,7 @@ class InputManager {
         // Ignore clicks in the center "dead zone"
         if (distance < rect.width * 0.15) {
             this.stopContinuousMovement();
+            this.resetAllButtonStates();
             return;
         }
         
@@ -249,9 +231,16 @@ class InputManager {
             key = 'ArrowUp';
         }
         
-        // CRITICAL CHANGE: Always reset and re-apply highlights
-        this.resetAllButtonHighlights();
-        this.highlightButtonByKey(key);
+        // Reset all button states first
+        this.resetAllButtonStates();
+        
+        // Find and set the current button's state
+        const currentButton = document.getElementById(`btn-${key.replace('Arrow', '').toLowerCase()}`);
+        if (currentButton) {
+            // Use the class from the CSS, not direct style manipulation
+            currentButton.classList.remove('inactive');
+            currentButton.classList.add('active-btn');
+        }
         
         // Only trigger movement if quadrant changed
         if (this.currentQuadrant !== key) {
@@ -266,17 +255,19 @@ class InputManager {
     }
 
     resetAllButtonHighlights() {
-        // Get direct references to each button
-        const upButton = document.getElementById('btn-up');
-        const rightButton = document.getElementById('btn-right');
-        const downButton = document.getElementById('btn-down');
-        const leftButton = document.getElementById('btn-left');
+        const buttons = [
+            document.getElementById('btn-up'),
+            document.getElementById('btn-right'),
+            document.getElementById('btn-down'),
+            document.getElementById('btn-left')
+        ];
         
-        // Reset all button colors
-        if (upButton) upButton.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
-        if (rightButton) rightButton.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
-        if (downButton) downButton.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
-        if (leftButton) leftButton.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+        buttons.forEach(button => {
+            if (button) {
+                button.classList.remove('active-btn');
+                button.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+            }
+        });
     }
 
     updateButtonHighlights(activeKey) {
