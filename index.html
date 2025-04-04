@@ -25,12 +25,11 @@
         <p>Controls: Use arrow keys to move</p>
     </div>
     
-    <!-- Load scripts in the correct order -->
-    <!-- First, load constants and base classes -->
+    <!-- Load constants first -->
     <script src="js/constants.js"></script>
+    
+    <!-- First, load base classes and entities -->
     <script src="js/entities/entity.js"></script>
-
-    <!-- Next, load entity classes that depend on the base entity class -->
     <script src="js/entities/wall.js"></script>
     <script src="js/entities/dirt.js"></script>
     <script src="js/entities/boulder.js"></script>
@@ -38,7 +37,7 @@
     <script src="js/entities/player.js"></script>
     <script src="js/entities/exit.js"></script>
 
-    <!-- Then load the game systems in the correct dependency order -->
+    <!-- Then load game systems -->
     <script src="js/systems/sprite-manager.js"></script>
     <script src="js/systems/sound-manager.js"></script>
     <script src="js/systems/renderer.js"></script>
@@ -186,10 +185,20 @@
             
             splash.appendChild(startButton);
             
+            // Add version text
+            const versionText = document.createElement('p');
+            versionText.textContent = `v${GAME_VERSION}`;
+            versionText.style.position = 'absolute';
+            versionText.style.bottom = '10px';
+            versionText.style.right = '10px';
+            versionText.style.fontSize = '10px';
+            versionText.style.color = '#888';
+            splash.appendChild(versionText);
+            
             // Add to document
             document.body.appendChild(splash);
         }
-
+        
         function toggleTouchControls() {
             if (window.gameInstance && window.gameInstance.inputManager) {
                 window.gameInstance.inputManager.toggleForceTouchControls();

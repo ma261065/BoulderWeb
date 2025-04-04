@@ -2,6 +2,7 @@
 const TILE_SIZE = 32;
 const GRID_WIDTH = 64;
 const GRID_HEIGHT = 32;
+const GAME_VERSION = '240404.2312';
 
 // Entity type enum (unchanged)
 const ENTITY_TYPES = {
