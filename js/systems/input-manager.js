@@ -6,6 +6,10 @@ class InputManager {
         this.touchControls = null;
         this.isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
         
+        // New key queue system
+        this.keyQueue = [];
+        this.processingKey = false;
+        
         // Use config for move delay
         this.moveDelay = this.game.config.get('player.moveDelay') || 150;
         
@@ -168,6 +172,10 @@ class InputManager {
             cancelAnimationFrame(this.moveLoopId);
             this.moveLoopId = null;
         }
+        if (this.moveInterval) {
+            clearInterval(this.moveInterval);
+            this.moveInterval = null;
+        }
         this.heldKey = null;
     }
     
@@ -229,56 +237,74 @@ class InputManager {
         if (this.game.isGameOver) {
             if (key === 'Enter') {
                 console.log("Enter input received while game over - restarting game");
-                this.game.restart();
+                if (typeof restartGameClean === 'function') {
+                    restartGameClean();
+                } else {
+                    this.game.restart();
+                }
                 return;
             }
             return;
         }
         
-        // Process the movement
-        this.processPlayerMovement(key);
+        // Add to the key queue
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
+            // Add to the queue if it's not the same as the last key added
+            if (this.keyQueue.length === 0 || this.keyQueue[this.keyQueue.length - 1] !== key) {
+                this.keyQueue.push(key);
+                console.log("Touch key added to queue:", key, "Queue length:", this.keyQueue.length);
+            }
+        }
     }
     
     handleKeyDown(e) {
+        // ESC key to end game and return to splash screen
+        if (e.key === 'Escape' && !this.game.isGameOver) {
+            e.preventDefault();
+            console.log("ESC pressed");
+            
+            // Use global function if available
+            if (typeof endGameAndShowSplash === 'function') {
+                endGameAndShowSplash();
+            } else {
+                // Fallback to original behavior
+                this.game.gameOver(false);
+            }
+            return;
+        }
+        
         // Game over restart
         if (this.game.isGameOver) {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 
-                // First remove any restart button that might be present
-                const existingButton = document.getElementById('restart-button');
-                if (existingButton) {
-                    existingButton.remove();
+                // Show splash screen
+                if (typeof endGameAndShowSplash === 'function') {
+                    endGameAndShowSplash();
+                } else {
+                    // Fallback
+                    const existingButton = document.getElementById('restart-button');
+                    if (existingButton) {
+                        existingButton.remove();
+                    }
+                    window.gameInstance = new Game();
                 }
-                
-                // Create a completely new game instance
-                window.gameInstance = new Game();
                 return;
             }
             return;
         }
         
-        // Track pressed keys
-        this.keysPressed.add(e.key);
-        
-        // Get current time
-        const currentTime = Date.now();
-        
-        // Only process movement if enough time has elapsed
-        if (currentTime - this.lastMoveTime >= this.moveDelay) {
-            switch (e.key) {
-                case 'ArrowUp':
-                case 'ArrowDown':
-                case 'ArrowLeft':
-                case 'ArrowRight':
-                    // Prevent scrolling
-                    e.preventDefault();
-                    
-                    if (this.processPlayerMovement(e.key)) {
-                        // Update last move time only if player moved
-                        this.lastMoveTime = currentTime;
-                    }
-                    break;
+        // Only process arrow keys
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+            e.preventDefault();
+            
+            // Track pressed keys
+            this.keysPressed.add(e.key);
+            
+            // Add to the queue if it's not the same as the last key added
+            if (this.keyQueue.length === 0 || this.keyQueue[this.keyQueue.length - 1] !== e.key) {
+                this.keyQueue.push(e.key);
+                console.log("Key added to queue:", e.key, "Queue length:", this.keyQueue.length);
             }
         }
     }
@@ -286,6 +312,29 @@ class InputManager {
     handleKeyUp(e) {
         // Remove released key from tracking
         this.keysPressed.delete(e.key);
+    }
+
+    getNextKey() {
+        // First try to get a key from the queue
+        if (this.keyQueue.length > 0) {
+            const key = this.keyQueue.shift();
+            console.log("Getting key from queue:", key);
+            return key;
+        }
+        
+        // If queue is empty but a key is still pressed, return that key
+        if (this.keysPressed.size > 0) {
+            // Get the active arrow key in a specific order
+            const arrowKeys = ['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'];
+            for (const key of arrowKeys) {
+                if (this.keysPressed.has(key)) {
+                    console.log("Getting held key:", key);
+                    return key;
+                }
+            }
+        }
+        
+        return null;
     }
 
     processQueuedMovement() {
@@ -332,14 +381,12 @@ class InputManager {
         return false;
     }
     
-    // Add a method to toggle touch controls visibility
     toggleTouchControls(show) {
         if (this.touchControls) {
             this.touchControls.style.display = show ? 'block' : 'none';
         }
     }
     
-    // Method to improve touch controls based on screen orientation
     updateTouchControlsForOrientation() {
         if (!this.isTouchDevice || !this.touchControls) return;
         

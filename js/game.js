@@ -240,11 +240,19 @@ class Game {
         const tickInterval = this.config.get('gameLoop.updateInterval');
         console.log("Game update interval:", tickInterval); // Debug log
         
+        // Clear any existing interval
+        if (this.gameLoopId) {
+            clearInterval(this.gameLoopId);
+        }
+        
+        // Start a new interval at the configured rate
         this.gameLoopId = setInterval(() => {
             if (!this.isGameOver) {
                 this.tick(); // Process one tick
             }
         }, tickInterval);
+        
+        console.log("Game loop started with interval:", tickInterval);
     }
     
     startTimerLoop() {
@@ -255,6 +263,22 @@ class Game {
                 this.updateTimer();
             }
         }, timerInterval);
+    }
+
+    updateTimer() {
+        if (this.isGameOver) return;
+        
+        this.timeLeft--;
+        this.renderer.updateUI(
+            this.levelManager.getCurrentLevel(),
+            this.diamondsCollected,
+            this.diamondsNeeded,
+            this.timeLeft
+        );
+        
+        if (this.timeLeft <= 0) {
+            this.gameOver(false);
+        }
     }
 
     // Add orientation change handling
@@ -290,30 +314,44 @@ class Game {
         // Force redraw
         this.renderer.drawGame();
     }
-    
-    // Enhance the update method to always update viewport position when player exists
+
     tick() {
         if (this.isGameOver) return;
         
         let somethingChanged = false;
         
-        // 1. First, process player movement if there's a pending move
-        if (this.pendingPlayerMove) {
-            const [dx, dy] = this.pendingPlayerMove;
+        // 1. Process player movement from the key queue or current pressed keys
+        if (this.inputManager && this.player) {
+            // Get the next key from the queue or currently pressed keys
+            const key = this.inputManager.getNextKey();
             
-            if (this.player) {
-                const moved = this.player.tryMove(
-                    this.grid, dx, dy, this.soundManager, this
-                );
+            if (key) {
+                // Convert key to movement direction
+                let dx = 0, dy = 0;
                 
-                somethingChanged = somethingChanged || moved;
+                switch (key) {
+                    case 'ArrowUp': dy = -1; break;
+                    case 'ArrowDown': dy = 1; break;
+                    case 'ArrowLeft': dx = -1; break;
+                    case 'ArrowRight': dx = 1; break;
+                }
+                
+                if (dx !== 0 || dy !== 0) {
+                    const moved = this.player.tryMove(
+                        this.grid, dx, dy, this.soundManager, this
+                    );
+                    
+                    somethingChanged = somethingChanged || moved;
+                    
+                    // Log movement for debugging
+                    if (moved) {
+                        console.log("Player moved:", key);
+                    }
+                }
             }
-            
-            // Clear the pending move whether it succeeded or not
-            this.pendingPlayerMove = null;
         }
         
-        // 2. Then process entity movement (bottom to top)
+        // 2. Process entity physics (bottom to top) - one step per entity per tick
         const movingEntities = this.levelManager.getMovingEntities();
         
         // Sort entities from bottom to top for natural falling
@@ -322,13 +360,13 @@ class Game {
             return b.x - a.x; // Right to left
         });
         
-        // Update each entity - ONE move per tick
+        // Update each entity - ONE move per tick, in the proper order
         for (const entity of movingEntities) {
             // Store original position for entity instance updating
             const originalX = entity.x;
             const originalY = entity.y;
             
-            // Update entity - ONE move per tick
+            // Update entity
             const changed = entity.update(this.grid);
             
             if (changed) {
@@ -384,21 +422,20 @@ class Game {
             this.renderer.drawGame();
         }
     }
-    
-    updateTimer() {
-        if (this.isGameOver) return;
+
+    // Helper method to get the active arrow key
+    getActiveArrowKey() {
+        const arrowKeys = ['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'];
         
-        this.timeLeft--;
-        this.renderer.updateUI(
-            this.levelManager.getCurrentLevel(),
-            this.diamondsCollected,
-            this.diamondsNeeded,
-            this.timeLeft
-        );
-        
-        if (this.timeLeft <= 0) {
-            this.gameOver(false);
+        // Check for keys in this specific order (right, left, down, up)
+        // This gives a predictable behavior when multiple keys are pressed
+        for (const key of arrowKeys) {
+            if (this.inputManager.keysPressed.has(key)) {
+                return key;
+            }
         }
+        
+        return null;
     }
    
     levelComplete() {
@@ -427,14 +464,18 @@ class Game {
     }
     
     gameOver(won) {
+        if (this.isGameOver) return; // Prevent multiple calls
+        
         this.isGameOver = true;
         
         // Cancel existing loops
         if (this.gameLoopId) {
-            cancelAnimationFrame(this.gameLoopId);
+            clearInterval(this.gameLoopId);
+            this.gameLoopId = null;
         }
         if (this.timerIntervalId) {
             clearInterval(this.timerIntervalId);
+            this.timerIntervalId = null;
         }
         
         // Play game over sound
@@ -451,13 +492,48 @@ class Game {
             won ? '#00FF00' : '#FF0000'
         );
     }
-    
-    restart() {       
-        // Reset game state
-        this.isGameOver = false;
+
+    cleanup() {
+        console.log("Cleaning up game resources...");
         
-        // Restart current level
-        this.startNewLevel(this.levelManager.getCurrentLevel());
+        // Cancel all intervals and animation frames
+        if (this.gameLoopId) {
+            clearInterval(this.gameLoopId);
+            this.gameLoopId = null;
+        }
+        
+        if (this.timerIntervalId) {
+            clearInterval(this.timerIntervalId);
+            this.timerIntervalId = null;
+        }
+        
+        // Clean up event listeners
+        if (this.inputManager) {
+            // Remove any event listeners that might have been added directly to the window
+            window.removeEventListener('resize', this.handleResize);
+            window.removeEventListener('orientationchange', this.handleOrientationChange);
+        }
+        
+        // Clear all references for garbage collection
+        this.grid = null;
+        this.player = null;
+        this.levelManager = null;
+        this.renderer = null;
+        this.soundManager = null;
+        this.inputManager = null;
+        
+        console.log("Game cleanup complete");
+    }
+    
+    restart() {
+        // Show splash screen when game is restarted
+        if (typeof endGameAndShowSplash === 'function') {
+            endGameAndShowSplash();
+        } else {
+            // Fallback to original implementation
+            this.isGameOver = false;
+            this.startNewLevel(this.levelManager.getCurrentLevel());
+        }
     }
     
     // Ensure entities match grid state

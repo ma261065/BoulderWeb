@@ -36,7 +36,7 @@ const SPRITE_PATHS = {
 };
 
 const GAME_SETTINGS = {
-    gameUpdateInterval: 150, // Consistent frame rate for all entities and player (5 frames per second)
+    gameUpdateInterval: 200, // Consistent frame rate for all entities and player (5 frames per second)
     timerUpdateInterval: 1000, // The one second level timer
     initialTime: 180,
     baseDiamondsNeeded: 10,

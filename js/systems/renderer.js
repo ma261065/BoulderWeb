@@ -239,10 +239,14 @@ class Renderer {
         restartButton.id = 'restart-button';
         restartButton.textContent = 'Restart Game';
         
-        // Add click handler that creates a completely new game instance
+        // Add click handler
         restartButton.addEventListener('click', () => {
-            this.removeRestartButton();
-            window.gameInstance = new Game();
+            if (typeof endGameAndShowSplash === 'function') {
+                endGameAndShowSplash();
+            } else {
+                this.removeRestartButton();
+                window.gameInstance = new Game();
+            }
         });
         
         // Add to document body

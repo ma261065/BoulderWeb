@@ -29,7 +29,7 @@
     <!-- First, load constants and base classes -->
     <script src="js/constants.js"></script>
     <script src="js/entities/entity.js"></script>
-    
+
     <!-- Next, load entity classes that depend on the base entity class -->
     <script src="js/entities/wall.js"></script>
     <script src="js/entities/dirt.js"></script>
@@ -37,7 +37,7 @@
     <script src="js/entities/diamond.js"></script>
     <script src="js/entities/player.js"></script>
     <script src="js/entities/exit.js"></script>
-    
+
     <!-- Then load the game systems in the correct dependency order -->
     <script src="js/systems/sprite-manager.js"></script>
     <script src="js/systems/sound-manager.js"></script>
@@ -45,123 +45,177 @@
     <script src="js/systems/level-manager.js"></script>
     <script src="js/systems/input-manager.js"></script>
     <script src="js/systems/game-config.js"></script>
-    
-    <!-- Finally, load the main game script and initialize the game -->
+
+    <!-- Finally, load the main game script -->
     <script src="js/game.js"></script>
-    <script>
-        // Initialize the game when the DOM is fully loaded
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM fully loaded, initializing game...');
-            // Create a global game instance
-            window.gameInstance = new Game();
-        });
-    </script>
 
     <script>
-    // Create and show splash screen
-    function showSplashScreen() {
-        // Create splash screen container
-        const splash = document.createElement('div');
-        splash.id = 'splash-screen';
-        splash.style.position = 'fixed';
-        splash.style.top = '0';
-        splash.style.left = '0';
-        splash.style.width = '100%';
-        splash.style.height = '100%';
-        splash.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
-        splash.style.display = 'flex';
-        splash.style.flexDirection = 'column';
-        splash.style.justifyContent = 'center';
-        splash.style.alignItems = 'center';
-        splash.style.zIndex = '1000';
-        splash.style.color = 'white';
-        splash.style.fontFamily = 'Arial, sans-serif';
-        
-        // Add game title
-        const title = document.createElement('h1');
-        title.textContent = 'BOULDER';
-        title.style.fontSize = '48px';
-        title.style.margin = '0 0 20px 0';
-        title.style.textShadow = '0 0 10px #00FFFF';
-        splash.appendChild(title);
-        
-        // Add game subtitle
-        const subtitle = document.createElement('p');
-        subtitle.textContent = 'A Boulder Dash Clone';
-        subtitle.style.fontSize = '24px';
-        subtitle.style.margin = '0 0 40px 0';
-        splash.appendChild(subtitle);
-        
-        // Add instructions
-        const instructions = document.createElement('div');
-        instructions.innerHTML = `
-            <p style="margin: 5px 0; font-size: 18px;">Collect diamonds and reach the exit</p>
-            <p style="margin: 5px 0; font-size: 18px;">Use arrow keys or swipe to move</p>
-            <p style="margin: 5px 0; font-size: 18px;">Avoid falling boulders!</p>
-        `;
-        instructions.style.textAlign = 'center';
-        instructions.style.marginBottom = '40px';
-        splash.appendChild(instructions);
-        
-        // Add start button
-        const startButton = document.createElement('button');
-        startButton.textContent = 'Start Game';
-        startButton.style.padding = '15px 40px';
-        startButton.style.fontSize = '24px';
-        startButton.style.backgroundColor = '#4CAF50';
-        startButton.style.color = 'white';
-        startButton.style.border = 'none';
-        startButton.style.borderRadius = '8px';
-        startButton.style.cursor = 'pointer';
-        
-        // Add button effects
-        startButton.style.transition = 'all 0.2s ease';
-        startButton.addEventListener('mouseover', () => {
-            startButton.style.backgroundColor = '#45a049';
-            startButton.style.transform = 'scale(1.05)';
-        });
-        startButton.addEventListener('mouseout', () => {
-            startButton.style.backgroundColor = '#4CAF50';
-            startButton.style.transform = 'scale(1)';
-        });
-        
-        // Add click handler to start the game
-        startButton.addEventListener('click', () => {
-            splash.style.opacity = '0';
-            splash.style.transition = 'opacity 0.5s ease';
+        // Replace the global game instantiation
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM fully loaded');
             
-            // Remove splash after animation
-            setTimeout(() => {
+            // Create only ONE game instance for the entire application
+            if (!window.gameInstance) {
+                window.gameInstance = new Game();
+                // Immediately pause the game until splash screen is dismissed
+                window.gameInstance.isGameOver = true; // Prevents game from running
+            }
+            
+            // Show splash screen
+            showSplashScreen();
+        });
+
+        // Create and show splash screen
+        function showSplashScreen() {
+            console.log('Creating splash screen...');
+            
+            // Create splash screen container
+            const splash = document.createElement('div');
+            splash.id = 'splash-screen';
+            splash.style.position = 'fixed';
+            splash.style.top = '0';
+            splash.style.left = '0';
+            splash.style.width = '100%';
+            splash.style.height = '100%';
+            splash.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+            splash.style.display = 'flex';
+            splash.style.flexDirection = 'column';
+            splash.style.justifyContent = 'center';
+            splash.style.alignItems = 'center';
+            splash.style.zIndex = '1000';
+            splash.style.color = 'white';
+            splash.style.fontFamily = 'Arial, sans-serif';
+            
+            // Add game title
+            const title = document.createElement('h1');
+            title.textContent = 'BOULDER';
+            title.style.fontSize = '48px';
+            title.style.margin = '0 0 20px 0';
+            title.style.textShadow = '0 0 10px #00FFFF';
+            splash.appendChild(title);
+            
+            // Add game subtitle
+            const subtitle = document.createElement('p');
+            subtitle.textContent = 'A Boulder Dash Clone';
+            subtitle.style.fontSize = '24px';
+            subtitle.style.margin = '0 0 40px 0';
+            splash.appendChild(subtitle);
+            
+            // Add instructions
+            const instructions = document.createElement('div');
+            instructions.innerHTML = `
+                <p style="margin: 5px 0; font-size: 18px;">Collect diamonds and reach the exit</p>
+                <p style="margin: 5px 0; font-size: 18px;">Use arrow keys or swipe to move</p>
+                <p style="margin: 5px 0; font-size: 18px;">Avoid falling boulders!</p>
+                <p style="margin: 5px 0; font-size: 18px;">Press ESC to end the current game</p>
+            `;
+            instructions.style.textAlign = 'center';
+            instructions.style.marginBottom = '40px';
+            splash.appendChild(instructions);
+            
+            // Add start button
+            const startButton = document.createElement('button');
+            startButton.textContent = 'Start Game';
+            startButton.style.padding = '15px 40px';
+            startButton.style.fontSize = '24px';
+            startButton.style.backgroundColor = '#4CAF50';
+            startButton.style.color = 'white';
+            startButton.style.border = 'none';
+            startButton.style.borderRadius = '8px';
+            startButton.style.cursor = 'pointer';
+            
+            // Add button effects
+            startButton.style.transition = 'all 0.2s ease';
+            startButton.addEventListener('mouseover', () => {
+                startButton.style.backgroundColor = '#45a049';
+                startButton.style.transform = 'scale(1.05)';
+            });
+            startButton.addEventListener('mouseout', () => {
+                startButton.style.backgroundColor = '#4CAF50';
+                startButton.style.transform = 'scale(1)';
+            });
+            
+            // Add click handler to start the game
+            startButton.addEventListener('click', () => {
+                console.log('Start button clicked, removing splash screen');
                 splash.remove();
                 
-                // Initialize game
+                console.log('Starting new level');
+                // IMPORTANT: Instead of creating a new game instance, reset the existing one
                 if (window.gameInstance) {
-                    // If game was already created but paused, resume it
-                    if (typeof window.gameInstance.resume === 'function') {
-                        window.gameInstance.resume();
+                    // Cancel any existing timers
+                    if (window.gameInstance.gameLoopId) {
+                        clearInterval(window.gameInstance.gameLoopId);
+                        window.gameInstance.gameLoopId = null;
                     }
-                } else {
-                    // Create game instance
-                    window.gameInstance = new Game();
+                    if (window.gameInstance.timerIntervalId) {
+                        clearInterval(window.gameInstance.timerIntervalId);
+                        window.gameInstance.timerIntervalId = null;
+                    }
+                    
+                    // Remove any restart button
+                    const restartButton = document.getElementById('restart-button');
+                    if (restartButton) {
+                        restartButton.remove();
+                    }
+                    
+                    // Reset input state
+                    if (window.gameInstance.inputManager) {
+                        console.log("Resetting input state");
+                        window.gameInstance.inputManager.keysPressed.clear();
+                        window.gameInstance.inputManager.keyQueue = [];
+                        if (window.gameInstance.inputManager.moveInterval) {
+                            clearInterval(window.gameInstance.inputManager.moveInterval);
+                            window.gameInstance.inputManager.moveInterval = null;
+                        }
+                    }
+                    
+                    // The important step: Completely re-initialize the input manager
+                    window.gameInstance.inputManager = new InputManager(window.gameInstance);
+                    
+                    // Start fresh level
+                    window.gameInstance.isGameOver = false; // Allow game to run
+                    window.gameInstance.startNewLevel(1); // Always start at level 1
+                    
+                    // Debug output
+                    console.log("Game restarted - input manager:", window.gameInstance.inputManager);
                 }
-            }, 500);
-        });
-        
-        splash.appendChild(startButton);
-        
-        // Add to document
-        document.body.appendChild(splash);
-    }
+            });
+            
+            splash.appendChild(startButton);
+            
+            // Add to document
+            document.body.appendChild(splash);
+        }
 
-    // Show splash screen when DOM is loaded
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('DOM fully loaded, showing splash screen...');
-        showSplashScreen();
-        
-        // Preload game assets while splash screen is shown
-        const spriteManager = new SpriteManager();
-        const soundManager = new SoundManager();
-    });
+        // Global function for ESC key
+        function endGameAndShowSplash() {
+            console.log("ESC pressed - ending game and showing splash");
+            
+            // Cancel game loops but keep the game instance
+            if (window.gameInstance) {
+                if (window.gameInstance.gameLoopId) {
+                    clearInterval(window.gameInstance.gameLoopId);
+                    window.gameInstance.gameLoopId = null;
+                }
+                if (window.gameInstance.timerIntervalId) {
+                    clearInterval(window.gameInstance.timerIntervalId);
+                    window.gameInstance.timerIntervalId = null;
+                }
+                
+                // Set game over flag
+                window.gameInstance.isGameOver = true;
+            }
+            
+            // Remove any restart button
+            const restartButton = document.getElementById('restart-button');
+            if (restartButton) {
+                restartButton.remove();
+            }
+            
+            // Show splash screen
+            showSplashScreen();
+        }
     </script>
 </body>
 </html>
