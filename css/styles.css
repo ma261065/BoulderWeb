@@ -24,15 +24,13 @@ h1 {
     display: flex;
     flex-direction: column;
     align-items: center;
-    /* Don't set a specific height - let it adapt */
 }
 
 canvas {
     display: block;
     background-color: black;
-    border: 2px solid #555;
-    
-    /* No percentage sizing - canvas size is set in JS */
+    border: 2px solid #777 !important;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
     
     /* Prevent distortion */
     image-rendering: pixelated;
@@ -76,10 +74,10 @@ canvas {
     background-color: #666;
 }
 
-/* Touch controls styling */
+/* Touch controls styling with consistent layout */
 #touch-controls {
     position: fixed;
-    bottom: 20px;
+    bottom: 150px;
     left: 20px;
     z-index: 100;
     pointer-events: none;
@@ -97,8 +95,8 @@ canvas {
 
 #dpad button {
     position: absolute;
-    width: 90px;
-    height: 90px;
+    width: 80px;
+    height: 80px;
     background-color: rgba(255, 255, 255, 0.2);
     border: 2px solid rgba(255, 255, 255, 0.5);
     color: white;
@@ -108,40 +106,58 @@ canvas {
     user-select: none;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
-    clip-path: polygon(50% 50%, 0 0, 100% 0);
+    border-radius: 50%;
     display: flex;
     justify-content: center;
     align-items: center;
-    transition: background-color 0.1s, transform 0.1s;
+    transition: background-color 0.1s ease;
 }
 
-#dpad button:active {
-    background-color: rgba(255, 255, 255, 0.4);
-    transform: scale(0.95);
+/* Consolidated active and hover states */
+#dpad button:active,
+#dpad button.active,
+#dpad button.active-btn {
+    background-color: rgba(255, 255, 255, 0.4) !important;
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.5) inset;
 }
 
+#dpad button.inactive {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Fixed positioning that maintains consistent relationships */
 #btn-up {
-    top: -5px;
-    left: 45px;
-    transform: rotate(-45deg);
+    top: 0;
+    left: calc(50% - 40px);
 }
 
 #btn-right {
-    top: 45px;
-    right: -5px;
-    transform: rotate(45deg);
+    top: calc(50% - 40px);
+    right: 0;
 }
 
 #btn-down {
-    bottom: -5px;
-    left: 45px;
-    transform: rotate(135deg);
+    bottom: 0;
+    left: calc(50% - 40px);
 }
 
 #btn-left {
-    top: 45px;
-    left: -5px;
-    transform: rotate(-135deg);
+    top: calc(50% - 40px);
+    left: 0;
+}
+
+/* Add a center gap */
+#dpad::after {
+    content: '';
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    background-color: rgba(0, 0, 0, 0.4);
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
 }
 
 #restart-button {
@@ -222,12 +238,40 @@ canvas {
     }
     
     #dpad {
-        width: 120px;
-        height: 120px;
+        width: 140px;
+        height: 140px;
     }
     
     #dpad button {
+        width: 60px;
+        height: 60px;
         font-size: 20px;
+    }
+    
+    /* Adjust positions when smaller */
+    #btn-up {
+        top: 0;
+        left: calc(50% - 30px);
+    }
+    
+    #btn-right {
+        top: calc(50% - 30px);
+        right: 0;
+    }
+    
+    #btn-down {
+        bottom: 0;
+        left: calc(50% - 30px);
+    }
+    
+    #btn-left {
+        top: calc(50% - 30px);
+        left: 0;
+    }
+    
+    #dpad::after {
+        width: 30px;
+        height: 30px;
     }
 }
 
@@ -238,10 +282,4 @@ canvas {
         right: auto;
         bottom: 20px;
     }
-}
-
-/* Improve visibility of game elements */
-canvas {
-    border: 2px solid #777 !important;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
 }

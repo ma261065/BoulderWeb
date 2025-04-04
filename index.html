@@ -190,6 +190,12 @@
             document.body.appendChild(splash);
         }
 
+        function toggleTouchControls() {
+            if (window.gameInstance && window.gameInstance.inputManager) {
+                window.gameInstance.inputManager.toggleForceTouchControls();
+            }
+        }
+        
         // Global function for ESC key
         function endGameAndShowSplash() {
             console.log("ESC pressed - ending game and showing splash");
