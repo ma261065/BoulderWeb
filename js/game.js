@@ -206,7 +206,7 @@ class Game {
         );
         
         // Update viewport for new level
-        this.renderer.calculateViewport();
+        //this.renderer.calculateViewport();  // Not sure why this doesn't exist any more
         this.renderer.centerViewportOnPlayer();
         
         // Draw initial state - this will clear any message overlays

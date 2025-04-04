@@ -50,15 +50,25 @@
     <script src="js/game.js"></script>
 
     <script>
-        // Replace the global game instantiation
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM fully loaded');
             
-            // Create only ONE game instance for the entire application
+            // Pause game immediately to prevent interactions
             if (!window.gameInstance) {
                 window.gameInstance = new Game();
-                // Immediately pause the game until splash screen is dismissed
-                window.gameInstance.isGameOver = true; // Prevents game from running
+            }
+            
+            // Immediately pause the game
+            window.gameInstance.isGameOver = true;
+            
+            // Pause game timers if they exist
+            if (window.gameInstance.gameLoopId) {
+                clearInterval(window.gameInstance.gameLoopId);
+                window.gameInstance.gameLoopId = null;
+            }
+            if (window.gameInstance.timerIntervalId) {
+                clearInterval(window.gameInstance.timerIntervalId);
+                window.gameInstance.timerIntervalId = null;
             }
             
             // Show splash screen
@@ -93,13 +103,6 @@
             title.style.margin = '0 0 20px 0';
             title.style.textShadow = '0 0 10px #00FFFF';
             splash.appendChild(title);
-            
-            // Add game subtitle
-            const subtitle = document.createElement('p');
-            subtitle.textContent = 'A Boulder Dash Clone';
-            subtitle.style.fontSize = '24px';
-            subtitle.style.margin = '0 0 40px 0';
-            splash.appendChild(subtitle);
             
             // Add instructions
             const instructions = document.createElement('div');
@@ -141,7 +144,6 @@
                 splash.remove();
                 
                 console.log('Starting new level');
-                // IMPORTANT: Instead of creating a new game instance, reset the existing one
                 if (window.gameInstance) {
                     // Cancel any existing timers
                     if (window.gameInstance.gameLoopId) {

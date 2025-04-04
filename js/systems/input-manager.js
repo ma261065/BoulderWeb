@@ -274,7 +274,7 @@ class InputManager {
         }
         
         // Game over restart
-        if (this.game.isGameOver) {
+        /*if (this.game.isGameOver) {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 
@@ -292,7 +292,7 @@ class InputManager {
                 return;
             }
             return;
-        }
+        }*/
         
         // Only process arrow keys
         if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
