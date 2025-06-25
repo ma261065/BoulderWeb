@@ -24,6 +24,14 @@ class HybridInputManager {
         this.mouseStartX = 0;
         this.mouseStartY = 0;
         
+        // Enhanced touch repeat system
+        this.isTouchDown = false;
+        this.touchRepeatInterval = null;
+        this.touchRepeatDelay = 150; // Slightly slower than keyboard for touch
+        this.lastSwipeDirection = null;
+        this.touchMoveThreshold = 10; // Pixels to move before considering it a new swipe
+        this.touchHoldDelay = 300; // Time to wait after initial swipe before starting repeat
+        
         // Direction constants matching Boulder game expectations
         this.DIRECTIONS = {
             UP: { x: 0, y: -1, name: 'up' },
@@ -47,7 +55,7 @@ class HybridInputManager {
         // Enhanced key repeat system
         this.pressedKeys = new Set();
         this.repeatInterval = null;
-        this.repeatDelay = 175; // Time between repeats in milliseconds
+        this.repeatDelay = 120; // Time between repeats in milliseconds
         this.currentRepeatingKey = null;
         
         this.setupStyles();
@@ -107,6 +115,8 @@ class HybridInputManager {
         window.addEventListener('blur', () => {
             this.pressedKeys.clear();
             this.stopKeyRepeat();
+            this.stopTouchRepeat();
+            this.isTouchDown = false;
         });
         
         // Focus the game element to receive keyboard events
@@ -186,7 +196,7 @@ class HybridInputManager {
         }
     }
 
-    // Touch event handlers
+    // Enhanced touch event handlers
     handleTouchStart(event) {
         if (!this.isActive) return;
         
@@ -194,33 +204,99 @@ class HybridInputManager {
         const touch = event.touches[0];
         this.touchStartX = touch.clientX;
         this.touchStartY = touch.clientY;
+        this.isTouchDown = true;
+        this.lastSwipeDirection = null;
+        
+        // Stop any existing touch repeat
+        this.stopTouchRepeat();
+    }
+
+    handleTouchMove(event) {
+        if (!this.isActive || !this.isTouchDown) return;
+        
+        event.preventDefault();
+        
+        const touch = event.touches[0];
+        const currentX = touch.clientX;
+        const currentY = touch.clientY;
+        
+        // Check if we've moved enough to register a swipe
+        const deltaX = currentX - this.touchStartX;
+        const deltaY = currentY - this.touchStartY;
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        
+        if (distance >= this.minSwipeDistance) {
+            // Determine swipe direction
+            const direction = this.getSwipeDirection(deltaX, deltaY);
+            
+            // If this is a new direction or first swipe
+            if (!this.lastSwipeDirection || this.lastSwipeDirection.name !== direction.name) {
+                this.lastSwipeDirection = direction;
+                
+                // Move immediately
+                this.movePlayer(direction);
+                
+                // Start continuous movement after a brief hold delay
+                this.startTouchRepeat(direction);
+            }
+            
+            // Update start position to current position for next swipe detection
+            this.touchStartX = currentX;
+            this.touchStartY = currentY;
+        }
     }
 
     handleTouchEnd(event) {
         if (!this.isActive) return;
         
         event.preventDefault();
-        const touch = event.changedTouches[0];
-        this.touchEndX = touch.clientX;
-        this.touchEndY = touch.clientY;
+        this.isTouchDown = false;
+        this.lastSwipeDirection = null;
         
-        this.processSwipe();
+        // Stop continuous movement
+        this.stopTouchRepeat();
+        
+        // If it was a quick swipe without hold, process it
+        if (event.changedTouches.length > 0) {
+            const touch = event.changedTouches[0];
+            this.touchEndX = touch.clientX;
+            this.touchEndY = touch.clientY;
+            
+            // Only process if we haven't already handled this swipe in touchmove
+            if (!this.lastSwipeDirection) {
+                this.processSwipe();
+            }
+        }
     }
 
-    // Mouse event handlers for desktop swipe simulation
+    // Enhanced mouse event handlers for desktop swipe simulation
     handleMouseDown(event) {
         if (!this.isActive) return;
         
         this.isMouseDown = true;
         this.mouseStartX = event.clientX;
         this.mouseStartY = event.clientY;
+        this.touchStartX = this.mouseStartX;
+        this.touchStartY = this.mouseStartY;
+        this.isTouchDown = true;
+        this.lastSwipeDirection = null;
         event.preventDefault();
+        
+        // Stop any existing repeats
+        this.stopTouchRepeat();
     }
 
     handleMouseUp(event) {
         if (!this.isActive || !this.isMouseDown) return;
         
         this.isMouseDown = false;
+        this.isTouchDown = false;
+        this.lastSwipeDirection = null;
+        
+        // Stop continuous movement
+        this.stopTouchRepeat();
+        
+        // Process final swipe if no continuous movement was active
         this.touchStartX = this.mouseStartX;
         this.touchStartY = this.mouseStartY;
         this.touchEndX = event.clientX;
@@ -232,25 +308,61 @@ class HybridInputManager {
     processSwipe() {
         const deltaX = this.touchEndX - this.touchStartX;
         const deltaY = this.touchEndY - this.touchStartY;
-        const absDeltaX = Math.abs(deltaX);
-        const absDeltaY = Math.abs(deltaY);
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
         
         // Check if swipe distance is sufficient
-        if (Math.max(absDeltaX, absDeltaY) < this.minSwipeDistance) {
+        if (distance < this.minSwipeDistance) {
             return;
         }
         
+        // Get swipe direction
+        const direction = this.getSwipeDirection(deltaX, deltaY);
+        this.movePlayer(direction);
+    }
+
+    // Helper method to determine swipe direction
+    getSwipeDirection(deltaX, deltaY) {
+        const absDeltaX = Math.abs(deltaX);
+        const absDeltaY = Math.abs(deltaY);
+        
         // Determine swipe direction
-        let direction;
         if (absDeltaX > absDeltaY) {
             // Horizontal swipe
-            direction = deltaX > 0 ? this.DIRECTIONS.RIGHT : this.DIRECTIONS.LEFT;
+            return deltaX > 0 ? this.DIRECTIONS.RIGHT : this.DIRECTIONS.LEFT;
         } else {
             // Vertical swipe
-            direction = deltaY > 0 ? this.DIRECTIONS.DOWN : this.DIRECTIONS.UP;
+            return deltaY > 0 ? this.DIRECTIONS.DOWN : this.DIRECTIONS.UP;
         }
+    }
+
+    // Touch repeat system
+    startTouchRepeat(direction) {
+        // Clear any existing repeat
+        this.stopTouchRepeat();
         
-        this.movePlayer(direction);
+        // Start repeating after a brief delay
+        setTimeout(() => {
+            // Only start if touch is still down and direction hasn't changed
+            if (this.isTouchDown && this.isActive && 
+                this.lastSwipeDirection && this.lastSwipeDirection.name === direction.name) {
+                
+                this.touchRepeatInterval = setInterval(() => {
+                    // Continue moving if touch is still down
+                    if (this.isTouchDown && this.isActive) {
+                        this.movePlayer(direction);
+                    } else {
+                        this.stopTouchRepeat();
+                    }
+                }, this.touchRepeatDelay);
+            }
+        }, this.touchHoldDelay);
+    }
+
+    stopTouchRepeat() {
+        if (this.touchRepeatInterval) {
+            clearInterval(this.touchRepeatInterval);
+            this.touchRepeatInterval = null;
+        }
     }
 
     // Main movement method that interfaces with your Boulder game
@@ -402,6 +514,8 @@ class HybridInputManager {
         this.isActive = false;
         this.pressedKeys.clear();
         this.stopKeyRepeat(); // Stop all repeats when deactivating
+        this.stopTouchRepeat(); // Stop touch repeats too
+        this.isTouchDown = false;
         console.log('Input manager deactivated');
     }
 
@@ -420,18 +534,39 @@ class HybridInputManager {
         console.log(`Key repeat delay set to ${this.repeatDelay}ms`);
     }
 
+    // ADDED: Method to adjust touch repeat speed
+    setTouchRepeatDelay(delay) {
+        this.touchRepeatDelay = Math.max(50, Math.min(500, delay)); // Clamp between 50-500ms
+        console.log(`Touch repeat delay set to ${this.touchRepeatDelay}ms`);
+    }
+
+    // ADDED: Method to adjust touch sensitivity
+    setTouchSensitivity(swipeDistance, holdDelay = null) {
+        this.minSwipeDistance = Math.max(20, Math.min(100, swipeDistance));
+        if (holdDelay !== null) {
+            this.touchHoldDelay = Math.max(100, Math.min(1000, holdDelay));
+        }
+        console.log(`Touch sensitivity: swipe=${this.minSwipeDistance}px, hold=${this.touchHoldDelay}ms`);
+    }
+
     // ADDED: Get current repeat settings
     getRepeatSettings() {
         return {
-            delay: this.repeatDelay,
-            isRepeating: this.repeatInterval !== null,
-            currentKey: this.currentRepeatingKey
+            keyDelay: this.repeatDelay,
+            touchDelay: this.touchRepeatDelay,
+            touchHoldDelay: this.touchHoldDelay,
+            minSwipeDistance: this.minSwipeDistance,
+            isKeyRepeating: this.repeatInterval !== null,
+            isTouchRepeating: this.touchRepeatInterval !== null,
+            currentKey: this.currentRepeatingKey,
+            touchDirection: this.lastSwipeDirection?.name || null
         };
     }
 
     destroy() {
-        // Stop any active key repeats
+        // Stop any active repeats
         this.stopKeyRepeat();
+        this.stopTouchRepeat();
         
         // Clean up event listeners
         document.removeEventListener('keydown', this.handleKeyDown.bind(this));
@@ -439,7 +574,7 @@ class HybridInputManager {
         
         this.gameElement.removeEventListener('touchstart', this.handleTouchStart.bind(this));
         this.gameElement.removeEventListener('touchend', this.handleTouchEnd.bind(this));
-        this.gameElement.removeEventListener('touchmove', this.preventDefault.bind(this));
+        this.gameElement.removeEventListener('touchmove', this.handleTouchMove.bind(this));
         
         this.gameElement.removeEventListener('mousedown', this.handleMouseDown.bind(this));
         this.gameElement.removeEventListener('mouseup', this.handleMouseUp.bind(this));
