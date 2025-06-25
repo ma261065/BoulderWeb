@@ -34,7 +34,9 @@ class Game {
         // Renderer and other systems
         this.renderer = new Renderer(this);
         this.levelManager = new LevelManager(this);
-        this.inputManager = new InputManager(this);
+        
+        // UPDATED: Use HybridInputManager instead of InputManager
+        this.inputManager = new HybridInputManager(this);
         
         // Initialize the game
         this.init();
@@ -100,6 +102,57 @@ class Game {
             this.logger.error('Game initialization failed', error);
             console.error('Detailed error:', error);
         }
+    }
+
+    // ADDED: Method for hybrid input manager to call
+    movePlayer(deltaX, deltaY) {
+        if (!this.player || this.isGameOver || !this.isValidMove(deltaX, deltaY)) {
+            return false;
+        }
+
+        try {
+            const moved = this.player.tryMove(
+                this.grid, deltaX, deltaY, this.soundManager, this
+            );
+            
+            if (moved) {
+                // Center viewport on player if needed
+                this.renderer.updateViewportPosition();
+                
+                // Redraw game
+                this.renderer.drawGame();
+                
+                this.logger.debug(`Player moved by (${deltaX}, ${deltaY})`);
+            }
+            
+            return moved;
+        } catch (error) {
+            this.logger.error('Error moving player:', error);
+            return false;
+        }
+    }
+
+    // ADDED: Alternative method for input handling
+    handleInput(direction, isPressed) {
+        if (!isPressed || this.isGameOver) return;
+        
+        const directionMap = {
+            'up': { x: 0, y: -1 },
+            'down': { x: 0, y: 1 },
+            'left': { x: -1, y: 0 },
+            'right': { x: 1, y: 0 }
+        };
+        
+        const movement = directionMap[direction];
+        if (movement) {
+            this.movePlayer(movement.x, movement.y);
+        }
+    }
+
+    // ADDED: Validate movement direction
+    isValidMove(deltaX, deltaY) {
+        return Math.abs(deltaX) <= 1 && Math.abs(deltaY) <= 1 && 
+               (Math.abs(deltaX) + Math.abs(deltaY)) === 1; // Only cardinal directions
     }
 
     requestFrame(action) {
@@ -204,6 +257,11 @@ class Game {
         
         // Draw initial state - this will clear any message overlays
         this.renderer.drawGame();
+        
+        // ADDED: Reactivate input manager for new level
+        if (this.inputManager) {
+            this.inputManager.activate();
+        }
         
         // Start game loops
         this.startGameLoop();
@@ -327,36 +385,9 @@ class Game {
         
         let somethingChanged = false;
         
-        // 1. Process player movement from the key queue or current pressed keys
-        if (this.inputManager && this.player) {
-            // Get the next key from the queue or currently pressed keys
-            const key = this.inputManager.getNextKey();
-            
-            if (key) {
-                // Convert key to movement direction
-                let dx = 0, dy = 0;
-                
-                switch (key) {
-                    case 'ArrowUp': dy = -1; break;
-                    case 'ArrowDown': dy = 1; break;
-                    case 'ArrowLeft': dx = -1; break;
-                    case 'ArrowRight': dx = 1; break;
-                }
-                
-                if (dx !== 0 || dy !== 0) {
-                    const moved = this.player.tryMove(
-                        this.grid, dx, dy, this.soundManager, this
-                    );
-                    
-                    somethingChanged = somethingChanged || moved;
-                    
-                    // Log movement for debugging
-                    if (moved) {
-                        console.log("Player moved:", key);
-                    }
-                }
-            }
-        }
+        // UPDATED: Simplified player movement handling 
+        // The hybrid input manager now calls movePlayer() directly
+        // No need to check keys here since that's handled by the input manager
         
         // 2. Process entity physics (bottom to top) - one step per entity per tick
         const movingEntities = this.levelManager.getMovingEntities();
@@ -430,20 +461,7 @@ class Game {
         }
     }
 
-    // Helper method to get the active arrow key
-    getActiveArrowKey() {
-        const arrowKeys = ['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'];
-        
-        // Check for keys in this specific order (right, left, down, up)
-        // This gives a predictable behavior when multiple keys are pressed
-        for (const key of arrowKeys) {
-            if (this.inputManager.keysPressed.has(key)) {
-                return key;
-            }
-        }
-        
-        return null;
-    }
+    // REMOVED: getActiveArrowKey method (no longer needed with hybrid input)
    
     levelComplete() {
         // Cancel existing loops
@@ -452,6 +470,11 @@ class Game {
         }
         if (this.timerIntervalId) {
             clearInterval(this.timerIntervalId);
+        }
+        
+        // ADDED: Deactivate input during level transition
+        if (this.inputManager) {
+            this.inputManager.deactivate();
         }
         
         // Show level complete message
@@ -476,6 +499,11 @@ class Game {
         // Ensure loops are stopped
         this.stopGameLoop();
         this.stopTimerLoop();
+        
+        // ADDED: Deactivate input manager during game over
+        if (this.inputManager) {
+            this.inputManager.deactivate();
+        }
     
         this.isGameOver = true;
         
@@ -500,6 +528,11 @@ class Game {
         // Stop game and timer loops
         this.stopGameLoop();
         this.stopTimerLoop();
+        
+        // ADDED: Clean up hybrid input manager
+        if (this.inputManager) {
+            this.inputManager.destroy();
+        }
         
         // Clean up event listeners
         if (this.inputManager) {
@@ -530,6 +563,11 @@ class Game {
         this.hasExitAppeared = false;
         this.timeLeft = this.config.get('time.initialTime');
         this.diamondsNeeded = this.config.get('levels.baseDiamondsNeeded');
+        
+        // ADDED: Reactivate input manager on restart
+        if (this.inputManager) {
+            this.inputManager.activate();
+        }
         
         // Show splash screen when game is restarted
         if (typeof endGameAndShowSplash === 'function') {
@@ -688,6 +726,11 @@ class Game {
             clearInterval(this.timerIntervalId);
         }
         
+        // ADDED: Deactivate input during pause
+        if (this.inputManager) {
+            this.inputManager.deactivate();
+        }
+        
         // Draw pause message
         this.renderer.drawMessage(
             'PAUSED', 
@@ -708,6 +751,11 @@ class Game {
         // Remove pause event listener
         if (this.pauseListener) {
             window.removeEventListener('keydown', this.pauseListener);
+        }
+        
+        // ADDED: Reactivate input after pause
+        if (this.inputManager) {
+            this.inputManager.activate();
         }
         
         // Redraw game

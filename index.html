@@ -2,15 +2,82 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Boulder - Web Version</title>
     <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* Mobile-friendly enhancements */
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #gameCanvas {
+            display: block;
+            border: 2px solid #333;
+            background: #000;
+            touch-action: none;
+            outline: none;
+        }
+        
+        /* Responsive canvas */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.5em;
+                margin: 5px 0;
+            }
+            
+            #gameCanvas {
+                width: 100vw;
+                height: 70vh;
+                border: none;
+                max-width: 100%;
+                max-height: 70vh;
+            }
+            
+            #info-panel {
+                font-size: 0.9em;
+                padding: 5px;
+                flex-wrap: wrap;
+                justify-content: space-around;
+            }
+            
+            #controls {
+                display: none; /* Hide on mobile - hybrid input will show appropriate instructions */
+            }
+        }
+        
+        @media (orientation: landscape) and (max-height: 600px) {
+            h1 {
+                display: none;
+            }
+            
+            #gameCanvas {
+                height: 85vh;
+            }
+        }
+    </style>
 </head>
 <body>
     <h1>Boulder</h1>
     
     <div id="game-container">
-        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <canvas id="gameCanvas" width="800" height="600" tabindex="0"></canvas>
         
         <div id="info-panel">
             <div id="level-info">Level: 1</div>
@@ -42,6 +109,7 @@
     <script src="js/systems/sound-manager.js"></script>
     <script src="js/systems/renderer.js"></script>
     <script src="js/systems/level-manager.js"></script>
+    <!-- UPDATED: Use the new hybrid input manager -->
     <script src="js/systems/input-manager.js"></script>
     <script src="js/systems/game-config.js"></script>
 
@@ -94,51 +162,85 @@
             splash.style.zIndex = '1000';
             splash.style.color = 'white';
             splash.style.fontFamily = 'Arial, sans-serif';
+            splash.style.touchAction = 'none';
             
             // Add game title
             const title = document.createElement('h1');
             title.textContent = 'BOULDER';
-            title.style.fontSize = '48px';
+            title.style.fontSize = window.innerWidth < 768 ? '36px' : '48px';
             title.style.margin = '0 0 20px 0';
             title.style.textShadow = '0 0 10px #00FFFF';
             splash.appendChild(title);
             
-            // Add instructions
+            // Detect device type for instructions
+            const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+            
+            // Add instructions based on device type
             const instructions = document.createElement('div');
-            instructions.innerHTML = `
-                <p style="margin: 5px 0; font-size: 18px;">Collect diamonds and reach the exit</p>
-                <p style="margin: 5px 0; font-size: 18px;">Use arrow keys or swipe to move</p>
-                <p style="margin: 5px 0; font-size: 18px;">Avoid falling boulders!</p>
-                <p style="margin: 5px 0; font-size: 18px;">Press ESC to end the current game</p>
-            `;
+            if (isTouchDevice) {
+                instructions.innerHTML = `
+                    <p style="margin: 5px 0; font-size: ${window.innerWidth < 768 ? '16px' : '18px'};">📱 Collect diamonds and reach the exit</p>
+                    <p style="margin: 5px 0; font-size: ${window.innerWidth < 768 ? '16px' : '18px'};">👆 Swipe in any direction to move</p>
+                    <p style="margin: 5px 0; font-size: ${window.innerWidth < 768 ? '16px' : '18px'};">⚠️ Avoid falling boulders!</p>
+                    <p style="margin: 5px 0; font-size: ${window.innerWidth < 768 ? '14px' : '16px'};">Tap anywhere to pause</p>
+                `;
+            } else {
+                instructions.innerHTML = `
+                    <p style="margin: 5px 0; font-size: 18px;">🎮 Collect diamonds and reach the exit</p>
+                    <p style="margin: 5px 0; font-size: 18px;">⌨️ Use arrow keys or WASD to move</p>
+                    <p style="margin: 5px 0; font-size: 18px;">🖱️ Or drag mouse to move</p>
+                    <p style="margin: 5px 0; font-size: 18px;">⚠️ Avoid falling boulders!</p>
+                    <p style="margin: 5px 0; font-size: 16px;">Press ESC to end the current game</p>
+                `;
+            }
             instructions.style.textAlign = 'center';
             instructions.style.marginBottom = '40px';
+            instructions.style.padding = '0 20px';
             splash.appendChild(instructions);
             
             // Add start button
             const startButton = document.createElement('button');
-            startButton.textContent = 'Start Game';
-            startButton.style.padding = '15px 40px';
-            startButton.style.fontSize = '24px';
+            startButton.textContent = isTouchDevice ? 'Tap to Start' : 'Start Game';
+            startButton.style.padding = window.innerWidth < 768 ? '12px 30px' : '15px 40px';
+            startButton.style.fontSize = window.innerWidth < 768 ? '20px' : '24px';
             startButton.style.backgroundColor = '#4CAF50';
             startButton.style.color = 'white';
             startButton.style.border = 'none';
             startButton.style.borderRadius = '8px';
             startButton.style.cursor = 'pointer';
+            startButton.style.touchAction = 'manipulation';
             
             // Add button effects
             startButton.style.transition = 'all 0.2s ease';
-            startButton.addEventListener('mouseover', () => {
-                startButton.style.backgroundColor = '#45a049';
-                startButton.style.transform = 'scale(1.05)';
-            });
-            startButton.addEventListener('mouseout', () => {
-                startButton.style.backgroundColor = '#4CAF50';
-                startButton.style.transform = 'scale(1)';
-            });
+            
+            const addButtonEffects = () => {
+                startButton.addEventListener('mouseover', () => {
+                    startButton.style.backgroundColor = '#45a049';
+                    startButton.style.transform = 'scale(1.05)';
+                });
+                startButton.addEventListener('mouseout', () => {
+                    startButton.style.backgroundColor = '#4CAF50';
+                    startButton.style.transform = 'scale(1)';
+                });
+                
+                // Touch effects for mobile
+                startButton.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    startButton.style.backgroundColor = '#45a049';
+                    startButton.style.transform = 'scale(0.95)';
+                });
+                startButton.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    startButton.style.backgroundColor = '#4CAF50';
+                    startButton.style.transform = 'scale(1)';
+                });
+            };
+            
+            addButtonEffects();
             
             // Add click handler to start the game
-            startButton.addEventListener('click', () => {
+            const startGame = (e) => {
+                e.preventDefault();
                 console.log('Start button clicked, removing splash screen');
                 splash.remove();
                 
@@ -160,34 +262,40 @@
                         restartButton.remove();
                     }
                     
-                    // Reset input state
+                    // UPDATED: Reset hybrid input state
                     if (window.gameInstance.inputManager) {
-                        console.log("Resetting input state");
-                        window.gameInstance.inputManager.keysPressed.clear();
-                        window.gameInstance.inputManager.keyQueue = [];
-                        if (window.gameInstance.inputManager.moveInterval) {
-                            clearInterval(window.gameInstance.inputManager.moveInterval);
-                            window.gameInstance.inputManager.moveInterval = null;
+                        console.log("Resetting hybrid input state");
+                        window.gameInstance.inputManager.activate();
+                        
+                        // Clear any pressed keys if the method exists (fallback compatibility)
+                        if (window.gameInstance.inputManager.keysPressed) {
+                            window.gameInstance.inputManager.keysPressed.clear();
+                        }
+                        if (window.gameInstance.inputManager.keyQueue) {
+                            window.gameInstance.inputManager.keyQueue = [];
                         }
                     }
                     
-                    // The important step: Completely re-initialize the input manager
-                    window.gameInstance.inputManager = new InputManager(window.gameInstance);
+                    // UPDATED: Re-initialize with HybridInputManager
+                    window.gameInstance.inputManager = new HybridInputManager(window.gameInstance);
                     
                     // Start fresh level
                     window.gameInstance.isGameOver = false; // Allow game to run
                     window.gameInstance.startNewLevel(1); // Always start at level 1
                     
                     // Debug output
-                    console.log("Game restarted - input manager:", window.gameInstance.inputManager);
+                    console.log("Game restarted - hybrid input manager:", window.gameInstance.inputManager);
                 }
-            });
+            };
+            
+            startButton.addEventListener('click', startGame);
+            startButton.addEventListener('touchend', startGame);
             
             splash.appendChild(startButton);
             
             // Add version text
             const versionText = document.createElement('p');
-            versionText.textContent = `v${GAME_VERSION}`;
+            versionText.textContent = `v${typeof GAME_VERSION !== 'undefined' ? GAME_VERSION : '1.0'}`;
             versionText.style.position = 'absolute';
             versionText.style.bottom = '10px';
             versionText.style.right = '10px';
@@ -197,17 +305,19 @@
             
             // Add to document
             document.body.appendChild(splash);
+            
+            // Handle splash screen touches to prevent default behaviors
+            splash.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+            });
         }
         
-        function toggleTouchControls() {
-            if (window.gameInstance && window.gameInstance.inputManager) {
-                window.gameInstance.inputManager.toggleForceTouchControls();
-            }
-        }
+        // UPDATED: Remove toggleTouchControls as it's handled automatically
+        // The hybrid input manager detects device capabilities automatically
         
-        // Global function for ESC key
+        // Global function for ESC key and game ending
         function endGameAndShowSplash() {
-            console.log("ESC pressed - ending game and showing splash");
+            console.log("ESC pressed or game ended - showing splash");
             
             // Cancel game loops but keep the game instance
             if (window.gameInstance) {
@@ -222,6 +332,11 @@
                 
                 // Set game over flag
                 window.gameInstance.isGameOver = true;
+                
+                // Deactivate input manager
+                if (window.gameInstance.inputManager && typeof window.gameInstance.inputManager.deactivate === 'function') {
+                    window.gameInstance.inputManager.deactivate();
+                }
             }
             
             // Remove any restart button
@@ -233,6 +348,41 @@
             // Show splash screen
             showSplashScreen();
         }
+        
+        // Handle page visibility changes for mobile
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && window.gameInstance && !window.gameInstance.isGameOver) {
+                // Page is hidden, pause the game
+                if (typeof window.gameInstance.pause === 'function') {
+                    window.gameInstance.pause();
+                }
+            }
+        });
+        
+        // Handle orientation changes
+        window.addEventListener('orientationchange', () => {
+            // Small delay to let orientation change complete
+            setTimeout(() => {
+                if (window.gameInstance && window.gameInstance.renderer) {
+                    window.gameInstance.handleOrientationChange();
+                }
+            }, 100);
+        });
+        
+        // Prevent zoom on double tap for iOS
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+        
+        // Prevent context menu on long press
+        document.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+        });
     </script>
 </body>
 </html>
