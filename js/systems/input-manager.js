@@ -6,7 +6,7 @@
 class HybridInputManager {
     constructor(gameInstance) {
         this.game = gameInstance;
-        this.gameElement = document.getElementById('game-canvas') || document.body;
+        this.gameElement = document.getElementById('gameCanvas') || document.body;
         this.isActive = true;
         this.currentDirection = null;
         
@@ -94,7 +94,7 @@ class HybridInputManager {
         // Touch events
         this.gameElement.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: false });
         this.gameElement.addEventListener('touchend', this.handleTouchEnd.bind(this), { passive: false });
-        this.gameElement.addEventListener('touchmove', this.preventDefault.bind(this), { passive: false });
+        this.gameElement.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false });
         
         // Mouse events for desktop swipe simulation
         this.gameElement.addEventListener('mousedown', this.handleMouseDown.bind(this));
@@ -225,9 +225,13 @@ class HybridInputManager {
         const deltaY = currentY - this.touchStartY;
         const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
         
+        console.log('Touch move - distance:', distance, 'delta:', deltaX, deltaY);
+        
         if (distance >= this.minSwipeDistance) {
             // Determine swipe direction
             const direction = this.getSwipeDirection(deltaX, deltaY);
+            
+            console.log('Touch swipe detected:', direction.name);
             
             // If this is a new direction or first swipe
             if (!this.lastSwipeDirection || this.lastSwipeDirection.name !== direction.name) {
@@ -236,8 +240,10 @@ class HybridInputManager {
                 // Move immediately
                 this.movePlayer(direction);
                 
-                // Start continuous movement after a brief hold delay
+                // Start continuous movement (immediate for direction changes)
                 this.startTouchRepeat(direction);
+                
+                console.log('Started touch repeat for direction:', direction.name);
             }
             
             // Update start position to current position for next swipe detection
@@ -269,40 +275,86 @@ class HybridInputManager {
         }
     }
 
-    // Enhanced mouse event handlers for desktop swipe simulation
+    // Enhanced mouse event handlers with repeat functionality
     handleMouseDown(event) {
         if (!this.isActive) return;
         
         this.isMouseDown = true;
         this.mouseStartX = event.clientX;
         this.mouseStartY = event.clientY;
-        this.touchStartX = this.mouseStartX;
-        this.touchStartY = this.mouseStartY;
-        this.isTouchDown = true;
+        this.isTouchDown = true; // Use touch system for mouse repeat
         this.lastSwipeDirection = null;
         event.preventDefault();
         
-        // Stop any existing repeats
-        this.stopTouchRepeat();
+        console.log('Mouse down - enhanced functionality');
+        
+        // Add mousemove listener to detect drag while button is down
+        this.gameElement.addEventListener('mousemove', this.handleMouseMove.bind(this));
+    }
+
+    handleMouseMove(event) {
+        if (!this.isActive || !this.isMouseDown) return;
+        
+        const currentX = event.clientX;
+        const currentY = event.clientY;
+        
+        // Calculate movement from start position
+        const deltaX = currentX - this.mouseStartX;
+        const deltaY = currentY - this.mouseStartY;
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        
+        console.log('Mouse move - distance:', distance, 'delta:', deltaX, deltaY);
+        
+        if (distance >= this.minSwipeDistance) {
+            // Determine swipe direction
+            const direction = this.getSwipeDirection(deltaX, deltaY);
+            
+            console.log('Mouse swipe detected:', direction.name);
+            
+            // If this is a new direction or first swipe
+            if (!this.lastSwipeDirection || this.lastSwipeDirection.name !== direction.name) {
+                this.lastSwipeDirection = direction;
+                
+                // Move immediately
+                this.movePlayer(direction);
+                
+                // Start continuous movement
+                this.startTouchRepeat(direction);
+                
+                console.log('Started mouse repeat for direction:', direction.name);
+            }
+            
+            // Update start position to current position for next swipe detection
+            this.mouseStartX = currentX;
+            this.mouseStartY = currentY;
+        }
     }
 
     handleMouseUp(event) {
-        if (!this.isActive || !this.isMouseDown) return;
+        if (!this.isActive) return;
+        
+        console.log('Mouse up - stopping repeat');
         
         this.isMouseDown = false;
-        this.isTouchDown = false;
+        this.isTouchDown = false; // Stop touch repeat system
         this.lastSwipeDirection = null;
+        
+        // Remove mousemove listener
+        this.gameElement.removeEventListener('mousemove', this.handleMouseMove.bind(this));
         
         // Stop continuous movement
         this.stopTouchRepeat();
         
-        // Process final swipe if no continuous movement was active
-        this.touchStartX = this.mouseStartX;
-        this.touchStartY = this.mouseStartY;
-        this.touchEndX = event.clientX;
-        this.touchEndY = event.clientY;
-        
-        this.processSwipe();
+        // If no repeat was active, process as single swipe
+        if (!this.touchRepeatInterval) {
+            this.touchStartX = this.mouseStartX;
+            this.touchStartY = this.mouseStartY;
+            this.touchEndX = event.clientX;
+            this.touchEndY = event.clientY;
+            
+            console.log('Processing final swipe as backup');
+            this.processSwipe();
+        }
     }
 
     processSwipe() {
@@ -310,13 +362,17 @@ class HybridInputManager {
         const deltaY = this.touchEndY - this.touchStartY;
         const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
         
+        console.log('Processing swipe - distance:', distance, 'deltaX:', deltaX, 'deltaY:', deltaY);
+        
         // Check if swipe distance is sufficient
         if (distance < this.minSwipeDistance) {
+            console.log('Swipe too short, ignoring');
             return;
         }
         
         // Get swipe direction
         const direction = this.getSwipeDirection(deltaX, deltaY);
+        console.log('Swipe direction:', direction.name);
         this.movePlayer(direction);
     }
 
@@ -335,31 +391,45 @@ class HybridInputManager {
         }
     }
 
-    // Touch repeat system
+    // Touch repeat system with immediate direction changes
     startTouchRepeat(direction) {
+        const wasRepeating = this.touchRepeatInterval !== null;
+        
         // Clear any existing repeat
         this.stopTouchRepeat();
         
-        // Start repeating after a brief delay
+        console.log('Starting touch repeat for direction:', direction.name, 'wasRepeating:', wasRepeating);
+        
+        // If we were already repeating, start immediately (no delay for direction changes)
+        const delay = wasRepeating ? 0 : this.touchHoldDelay;
+        
+        // Start repeating after delay (immediate if changing direction)
         setTimeout(() => {
-            // Only start if touch is still down and direction hasn't changed
+            // Only start if touch/mouse is still down and direction hasn't changed
             if (this.isTouchDown && this.isActive && 
                 this.lastSwipeDirection && this.lastSwipeDirection.name === direction.name) {
                 
+                console.log('Touch repeat interval started with delay:', delay);
+                
                 this.touchRepeatInterval = setInterval(() => {
-                    // Continue moving if touch is still down
+                    // Continue moving if touch/mouse is still down
                     if (this.isTouchDown && this.isActive) {
+                        console.log('Touch repeat move:', direction.name);
                         this.movePlayer(direction);
                     } else {
+                        console.log('Stopping touch repeat - touch no longer down');
                         this.stopTouchRepeat();
                     }
                 }, this.touchRepeatDelay);
+            } else {
+                console.log('Touch repeat not started - conditions not met');
             }
-        }, this.touchHoldDelay);
+        }, delay);
     }
 
     stopTouchRepeat() {
         if (this.touchRepeatInterval) {
+            console.log('Stopping touch repeat');
             clearInterval(this.touchRepeatInterval);
             this.touchRepeatInterval = null;
         }
