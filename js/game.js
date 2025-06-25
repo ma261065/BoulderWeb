@@ -407,6 +407,14 @@ class Game {
             // Update entity
             const changed = entity.update(this.grid);
             
+            // ALWAYS check for sounds, regardless of movement
+            if (typeof entity.getFallingSound === 'function') {
+                const soundName = entity.getFallingSound();
+                if (soundName) {
+                    this.soundManager.playSoundWithProbability(soundName, 0.3);
+                }
+            }
+            
             if (changed) {
                 somethingChanged = true;
                 
@@ -419,14 +427,6 @@ class Game {
                         entity.x, 
                         entity.y
                     );
-                    
-                    // Check if sound should be played
-                    if (typeof entity.getFallingSound === 'function') {
-                        const soundName = entity.getFallingSound();
-                        if (soundName) {
-                            this.soundManager.playSoundWithProbability(soundName, 0.3);
-                        }
-                    }
                     
                     // Check if it falls on player
                     if (entity.falling && 
