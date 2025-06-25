@@ -473,8 +473,8 @@ class HybridInputManager {
                 console.log('Dispatched playerMove event:', direction);
             }
             
-            // Visual feedback
-            this.showDirectionFeedback(direction.name);
+            // Visual feedback (commented out - no longer needed)
+            // this.showDirectionFeedback(direction.name);
             
         } catch (error) {
             console.error('Error moving player:', error);
@@ -482,47 +482,10 @@ class HybridInputManager {
         }
     }
 
-    // Visual feedback methods
+    // Visual feedback methods (disabled)
     showDirectionFeedback(direction) {
-        // Create or update direction indicator
-        let indicator = document.getElementById('direction-indicator');
-        if (!indicator) {
-            indicator = document.createElement('div');
-            indicator.id = 'direction-indicator';
-            indicator.style.cssText = `
-                position: fixed;
-                top: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: rgba(0, 0, 0, 0.8);
-                color: #00ff00;
-                padding: 8px 16px;
-                border-radius: 15px;
-                font-family: 'Courier New', monospace;
-                font-size: 16px;
-                font-weight: bold;
-                z-index: 1000;
-                pointer-events: none;
-                transition: opacity 0.2s ease;
-                border: 2px solid #00ff00;
-            `;
-            document.body.appendChild(indicator);
-        }
-        
-        const arrows = {
-            up: '↑',
-            down: '↓',
-            left: '←',
-            right: '→'
-        };
-        
-        indicator.textContent = `${arrows[direction]} ${direction.toUpperCase()}`;
-        indicator.style.opacity = '1';
-        
-        // Hide after 800ms
-        setTimeout(() => {
-            if (indicator) indicator.style.opacity = '0';
-        }, 800);
+        // Direction feedback disabled - was only useful for debugging
+        return;
     }
 
     showControls() {
@@ -653,10 +616,7 @@ class HybridInputManager {
         this.gameElement.removeEventListener('contextmenu', this.preventDefault.bind(this));
         this.gameElement.removeEventListener('dragstart', this.preventDefault.bind(this));
         
-        // Remove UI elements
-        const indicator = document.getElementById('direction-indicator');
-        if (indicator) indicator.remove();
-        
+        // Remove UI elements (direction indicator no longer used)
         const controlsInfo = document.getElementById('controls-info');
         if (controlsInfo) controlsInfo.remove();
         
