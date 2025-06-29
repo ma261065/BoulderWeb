@@ -5,6 +5,8 @@
  */
 class HybridInputManager {
     constructor(gameInstance) {
+        this.lastMouseMoveTime = 0;
+        this.mouseMoveInterval = 100; // Check every 100ms
         this.game = gameInstance;
         this.gameElement = document.getElementById('gameCanvas') || document.body;
         this.isActive = true;
@@ -19,7 +21,7 @@ class HybridInputManager {
         this.touchStartY = 0;
         this.touchEndX = 0;
         this.touchEndY = 0;
-        this.minSwipeDistance = 50;
+        this.minSwipeDistance = 25;
         this.isMouseDown = false;
         this.mouseStartX = 0;
         this.mouseStartY = 0;
@@ -99,7 +101,13 @@ class HybridInputManager {
         // Mouse events for desktop swipe simulation
         this.gameElement.addEventListener('mousedown', this.handleMouseDown.bind(this));
         this.gameElement.addEventListener('mouseup', this.handleMouseUp.bind(this));
-        this.gameElement.addEventListener('mouseleave', this.handleMouseUp.bind(this));
+        this.gameElement.addEventListener('mouseleave', (event) => {
+            // Only stop if mouse button is not down
+            if (!this.isMouseDown) {
+                // Maybe restore cursor or do other cleanup
+            }
+            // Don't call handleMouseUp - let the global mouseup handle it
+        });
         
         // Prevent context menu and drag
         this.gameElement.addEventListener('contextmenu', this.preventDefault.bind(this));
@@ -282,79 +290,57 @@ class HybridInputManager {
         this.isMouseDown = true;
         this.mouseStartX = event.clientX;
         this.mouseStartY = event.clientY;
-        this.isTouchDown = true; // Use touch system for mouse repeat
-        this.lastSwipeDirection = null;
+        this.currentMouseDirection = null;
+        
         event.preventDefault();
         
-        console.log('Mouse down - enhanced functionality');
-        
-        // Add mousemove listener to detect drag while button is down
-        this.gameElement.addEventListener('mousemove', this.handleMouseMove.bind(this));
+        // FIXED: Use global mouse tracking instead of element-specific
+        document.addEventListener('mousemove', this.handleMouseMove.bind(this));
+        document.addEventListener('mouseup', this.handleMouseUp.bind(this));
     }
 
     handleMouseMove(event) {
         if (!this.isActive || !this.isMouseDown) return;
         
+        const now = Date.now();
         const currentX = event.clientX;
         const currentY = event.clientY;
         
-        // Calculate movement from start position
         const deltaX = currentX - this.mouseStartX;
         const deltaY = currentY - this.mouseStartY;
         const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
         
-        console.log('Mouse move - distance:', distance, 'delta:', deltaX, deltaY);
+        // Check for direction change OR if enough time has passed
+        const threshold = 15; // Smaller, more responsive threshold
         
-        if (distance >= this.minSwipeDistance) {
-            // Determine swipe direction
-            const direction = this.getSwipeDirection(deltaX, deltaY);
-            
-            console.log('Mouse swipe detected:', direction.name);
-            
-            // If this is a new direction or first swipe
-            if (!this.lastSwipeDirection || this.lastSwipeDirection.name !== direction.name) {
-                this.lastSwipeDirection = direction;
+        if (distance >= threshold || (now - this.lastMouseMoveTime) > this.mouseMoveInterval) {
+            if (distance >= threshold) {
+                const newDirection = this.getSwipeDirection(deltaX, deltaY);
                 
-                // Move immediately
-                this.movePlayer(direction);
-                
-                // Start continuous movement
-                this.startTouchRepeat(direction);
-                
-                console.log('Started mouse repeat for direction:', direction.name);
+                if (!this.currentMouseDirection || this.currentMouseDirection.name !== newDirection.name) {
+                    this.currentMouseDirection = newDirection;
+                    console.log('Mouse direction changed to:', newDirection.name);
+                }
             }
             
-            // Update start position to current position for next swipe detection
+            // Reset reference point regularly
             this.mouseStartX = currentX;
             this.mouseStartY = currentY;
+            this.lastMouseMoveTime = now;
         }
     }
 
     handleMouseUp(event) {
         if (!this.isActive) return;
         
-        console.log('Mouse up - stopping repeat');
-        
         this.isMouseDown = false;
-        this.isTouchDown = false; // Stop touch repeat system
-        this.lastSwipeDirection = null;
+        this.currentMouseDirection = null;
         
-        // Remove mousemove listener
-        this.gameElement.removeEventListener('mousemove', this.handleMouseMove.bind(this));
+        // FIXED: Remove global listeners instead of element listeners
+        document.removeEventListener('mousemove', this.handleMouseMove.bind(this));
+        document.removeEventListener('mouseup', this.handleMouseUp.bind(this));
         
-        // Stop continuous movement
-        this.stopTouchRepeat();
-        
-        // If no repeat was active, process as single swipe
-        if (!this.touchRepeatInterval) {
-            this.touchStartX = this.mouseStartX;
-            this.touchStartY = this.mouseStartY;
-            this.touchEndX = event.clientX;
-            this.touchEndY = event.clientY;
-            
-            console.log('Processing final swipe as backup');
-            this.processSwipe();
-        }
+        console.log('Mouse released - stopping movement');
     }
 
     processSwipe() {
@@ -381,15 +367,37 @@ class HybridInputManager {
         const absDeltaX = Math.abs(deltaX);
         const absDeltaY = Math.abs(deltaY);
         
-        // Determine swipe direction
+        // Simple approach: just choose the larger component
         if (absDeltaX > absDeltaY) {
-            // Horizontal swipe
             return deltaX > 0 ? this.DIRECTIONS.RIGHT : this.DIRECTIONS.LEFT;
         } else {
-            // Vertical swipe
             return deltaY > 0 ? this.DIRECTIONS.DOWN : this.DIRECTIONS.UP;
         }
-    }
+}
+
+        /*// Add a bias toward horizontal/vertical (not diagonal)
+        const bias = 1.2; // Require 20% more movement to switch from horizontal to vertical
+        
+        if (absDeltaX > absDeltaY * bias) {
+            // Clearly horizontal
+            return deltaX > 0 ? this.DIRECTIONS.RIGHT : this.DIRECTIONS.LEFT;
+        } else if (absDeltaY > absDeltaX * bias) {
+            // Clearly vertical  
+            return deltaY > 0 ? this.DIRECTIONS.DOWN : this.DIRECTIONS.UP;
+        } else {
+            // If it's close to diagonal, stick with current direction if we have one
+            if (this.currentMouseDirection) {
+                return this.currentMouseDirection;
+            }
+            
+            // Default to the larger component
+            if (absDeltaX > absDeltaY) {
+                return deltaX > 0 ? this.DIRECTIONS.RIGHT : this.DIRECTIONS.LEFT;
+            } else {
+                return deltaY > 0 ? this.DIRECTIONS.DOWN : this.DIRECTIONS.UP;
+            }
+        }
+    }*/
 
     // Touch repeat system with immediate direction changes
     startTouchRepeat(direction) {
@@ -438,6 +446,15 @@ class HybridInputManager {
     // Main movement method that interfaces with your Boulder game
     movePlayer(direction) {
         if (!this.game || !this.isActive) return;
+        
+        // For mouse input, use the current mouse direction if mouse is down
+        if (this.isMouseDown && this.currentMouseDirection) {
+            direction = this.currentMouseDirection;
+        }
+        
+        // If no direction and mouse not down, don't move
+        if (!direction) 
+            return;
         
         this.currentDirection = direction;
         

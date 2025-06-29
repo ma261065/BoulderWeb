@@ -104,32 +104,14 @@ class Game {
         }
     }
 
-    // ADDED: Method for hybrid input manager to call
     movePlayer(deltaX, deltaY) {
         if (!this.player || this.isGameOver || !this.isValidMove(deltaX, deltaY)) {
             return false;
         }
 
-        try {
-            const moved = this.player.tryMove(
-                this.grid, deltaX, deltaY, this.soundManager, this
-            );
-            
-            if (moved) {
-                // Center viewport on player if needed
-                this.renderer.updateViewportPosition();
-                
-                // Redraw game
-                this.renderer.drawGame();
-                
-                this.logger.debug(`Player moved by (${deltaX}, ${deltaY})`);
-            }
-            
-            return moved;
-        } catch (error) {
-            this.logger.error('Error moving player:', error);
-            return false;
-        }
+        // FIXED: Queue the movement instead of processing immediately
+        this.pendingPlayerMove = { deltaX, deltaY };
+        return true; // Return true to indicate input was accepted
     }
 
     // ADDED: Alternative method for input handling
@@ -384,6 +366,33 @@ class Game {
         if (this.isGameOver) return;
         
         let somethingChanged = false;
+        
+        if (this.pendingPlayerMove) {
+            const moved = this.player.tryMove(
+                this.grid, 
+                this.pendingPlayerMove.deltaX, 
+                this.pendingPlayerMove.deltaY, 
+                this.soundManager, 
+                this
+            );
+            
+            if (moved) {
+                somethingChanged = true;
+            }
+            
+            this.pendingPlayerMove = null; // Clear the queued move
+        }
+        else if (this.inputManager.isMouseDown && this.inputManager.currentMouseDirection) {
+            const direction = this.inputManager.currentMouseDirection;
+            const moved = this.player.tryMove(
+                this.grid, 
+                direction.x, 
+                direction.y, 
+                this.soundManager, 
+                this
+            );
+            if (moved) somethingChanged = true;
+        }
         
         // UPDATED: Simplified player movement handling 
         // The hybrid input manager now calls movePlayer() directly
