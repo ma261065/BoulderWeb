@@ -24,7 +24,8 @@ const SOUND_PATHS = {
     boulder: 'sounds/boulder.wav',
     push: 'sounds/push.wav',
     levelComplete: 'sounds/level_complete.wav',
-    gameOver: 'sounds/game_over.wav'
+    gameOver: 'sounds/game_over.wav',
+    die: 'sounds/die.wav',
 };
 
 // Sprite file paths (unchanged)
