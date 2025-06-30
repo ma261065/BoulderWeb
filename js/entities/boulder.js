@@ -121,11 +121,11 @@ class Boulder extends Entity {
         let sound = null;
         
         if (this.justLanded) {
-            sound = 'fall';
-            console.log(`Boulder at (${this.x}, ${this.y}) just landed - playing fall sound`);
+            sound = 'boulder'; // CHANGED from 'fall' to 'boulder'
+            console.log(`Boulder at (${this.x}, ${this.y}) just landed - playing boulder sound`);
         } else if (this.justStartedRolling) {
-            sound = 'boulder';
-            console.log(`Boulder at (${this.x}, ${this.y}) just started rolling - playing boulder sound`);
+            sound = null; // CHANGED from 'boulder' to null (silent rolling)
+            console.log(`Boulder at (${this.x}, ${this.y}) just started rolling - silent`);
         }
         
         // Debug: Log when no sound is played

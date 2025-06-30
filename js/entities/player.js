@@ -75,7 +75,7 @@ class Player extends Entity {
                 grid[newY][newX] = ENTITY_TYPES.EMPTY;
                 
                 if (soundManager) {
-                    soundManager.playSound('boulder');
+                    soundManager.playSound('push');
                 }
                 
                 // Now move the player

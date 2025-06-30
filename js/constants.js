@@ -21,7 +21,7 @@ const SOUND_PATHS = {
     dig: 'sounds/dig.wav',
     diamond: 'sounds/diamond.wav',
     boulder: 'sounds/boulder.wav',
-    fall: 'sounds/fall.wav',
+    push: 'sounds/push.wav',
     levelComplete: 'sounds/level_complete.wav',
     gameOver: 'sounds/game_over.wav'
 };

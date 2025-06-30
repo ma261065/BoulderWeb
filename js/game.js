@@ -420,7 +420,7 @@ class Game {
             if (typeof entity.getFallingSound === 'function') {
                 const soundName = entity.getFallingSound();
                 if (soundName) {
-                    this.soundManager.playSoundWithProbability(soundName, 0.3);
+                    this.soundManager.playSound(soundName);
                 }
             }
             
