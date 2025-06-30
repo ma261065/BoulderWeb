@@ -3,14 +3,21 @@ class Diamond extends Entity {
         super(x, y, ENTITY_TYPES.DIAMOND);
         this.falling = false;
         this.rolling = false;
+        this.justLanded = false; // ADD: Flag for when diamond just stopped falling
     }
     
-    // In diamond.js, update the update() method:
-
     update(grid) {
+        // Reset sound flags
+        this.justLanded = false;
+        
+        // Store previous state
+        const wasFalling = this.falling;
+        
         // Reset state flags
         this.falling = false;
         this.rolling = false;
+        
+        let moved = false;
         
         // Check if there's empty space below - ONE TILE MOVEMENT ONLY
         if (Entity.isInBounds(this.x, this.y + 1) && grid[this.y + 1][this.x] === ENTITY_TYPES.EMPTY) {
@@ -24,7 +31,7 @@ class Diamond extends Entity {
             grid[this.y][this.x] = this.type;
             
             this.falling = true;
-            return true;
+            moved = true;
         } 
         // Check if it can roll off another boulder or diamond - ONE TILE MOVEMENT ONLY
         else if (Entity.isInBounds(this.x, this.y + 1) && 
@@ -46,11 +53,10 @@ class Diamond extends Entity {
                 grid[this.y][this.x] = this.type;
                 
                 this.rolling = true;
-                return true;
+                moved = true;
             }
-            
             // Try to roll right
-            if (Entity.isInBounds(this.x + 1, this.y) && 
+            else if (Entity.isInBounds(this.x + 1, this.y) && 
                 Entity.isInBounds(this.x + 1, this.y + 1) && 
                 grid[this.y][this.x + 1] === ENTITY_TYPES.EMPTY && 
                 grid[this.y + 1][this.x + 1] === ENTITY_TYPES.EMPTY) {
@@ -65,11 +71,17 @@ class Diamond extends Entity {
                 grid[this.y][this.x] = this.type;
                 
                 this.rolling = true;
-                return true;
+                moved = true;
             }
         }
         
-        return false;
+        // ADDED: Set sound flag when diamond stops falling
+        if (wasFalling && !this.falling) {
+            this.justLanded = true; // Diamond stopped falling = landing sound
+            console.log(`Diamond at (${this.x}, ${this.y}) JUST LANDED! Setting justLanded=true`);
+        }
+        
+        return moved;
     }
     
     draw(ctx, x, y, tileSize = TILE_SIZE) {
@@ -85,12 +97,13 @@ class Diamond extends Entity {
         }
     }
     
-    getFallingSound() {
-        if (this.falling) {
-            return 'fall';
-        } else if (this.rolling) {
-            return 'boulder';
+    // FIXED: Rename to getLandingSound() and use justLanded flag
+    getLandingSound() {
+        if (this.justLanded) {
+            console.log(`Diamond at (${this.x}, ${this.y}) just landed - playing diamond sound`);
+            return 'diamond'; // diamond.wav when diamond lands
         }
-        return null;
+        
+        return null; // Silent when rolling or not moving
     }
 }

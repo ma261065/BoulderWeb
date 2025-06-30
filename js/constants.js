@@ -20,6 +20,7 @@ const SOUND_PATHS = {
     move: 'sounds/move.wav',
     dig: 'sounds/dig.wav',
     diamond: 'sounds/diamond.wav',
+    pickup: 'sounds/pickup.wav',
     boulder: 'sounds/boulder.wav',
     push: 'sounds/push.wav',
     levelComplete: 'sounds/level_complete.wav',

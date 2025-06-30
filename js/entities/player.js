@@ -110,7 +110,7 @@ class Player extends Entity {
             } else if (destType === ENTITY_TYPES.DIRT) {
                 soundManager.playSound('dig');
             } else if (destType === ENTITY_TYPES.DIAMOND) {
-                soundManager.playSound('diamond');
+                soundManager.playSound('pickup');
             } else if (destType === ENTITY_TYPES.EXIT) {
                 soundManager.playSound('levelComplete');
             }

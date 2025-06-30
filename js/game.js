@@ -182,6 +182,11 @@ class Game {
         
         // Set cursor to visible whenever mouse moves
         canvas.addEventListener('mousemove', () => {
+            // ADDED: Don't show cursor if mouse is being used for game controls
+            if (this.inputManager && this.inputManager.isMouseDown) {
+                return; // Keep cursor hidden during game control
+            }
+            
             // Show cursor
             canvas.style.cursor = 'default';
             
@@ -196,7 +201,10 @@ class Game {
         
         // Hide cursor when mouse leaves the canvas
         canvas.addEventListener('mouseleave', () => {
-            canvas.style.cursor = 'default';
+            // ADDED: Only restore cursor if not using for controls
+            if (!this.inputManager || !this.inputManager.isMouseDown) {
+                canvas.style.cursor = 'default';
+            }
             if (cursorTimeout) {
                 clearTimeout(cursorTimeout);
             }
@@ -417,8 +425,8 @@ class Game {
             const changed = entity.update(this.grid);
             
             // ALWAYS check for sounds, regardless of movement
-            if (typeof entity.getFallingSound === 'function') {
-                const soundName = entity.getFallingSound();
+            if (typeof entity.getLandingSound === 'function') {
+                const soundName = entity.getLandingSound();
                 if (soundName) {
                     this.soundManager.playSound(soundName);
                 }

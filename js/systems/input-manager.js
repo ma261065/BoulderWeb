@@ -294,7 +294,10 @@ class HybridInputManager {
         
         event.preventDefault();
         
-        // FIXED: Use global mouse tracking instead of element-specific
+        // ADDED: Hide cursor when mouse button is down for game control
+        this.gameElement.style.cursor = 'none';
+        
+        // Add global mousemove listener
         document.addEventListener('mousemove', this.handleMouseMove.bind(this));
         document.addEventListener('mouseup', this.handleMouseUp.bind(this));
     }
@@ -336,7 +339,10 @@ class HybridInputManager {
         this.isMouseDown = false;
         this.currentMouseDirection = null;
         
-        // FIXED: Remove global listeners instead of element listeners
+        // ADDED: Show cursor again when mouse button is released
+        this.gameElement.style.cursor = 'default';
+        
+        // Remove global listeners
         document.removeEventListener('mousemove', this.handleMouseMove.bind(this));
         document.removeEventListener('mouseup', this.handleMouseUp.bind(this));
         

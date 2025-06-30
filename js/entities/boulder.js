@@ -117,7 +117,7 @@ class Boulder extends Entity {
     }
     
     // FIXED: Use flags set during update() to determine sounds with debug logging
-    getFallingSound() {
+    getLandingSound() {
         let sound = null;
         
         if (this.justLanded) {
