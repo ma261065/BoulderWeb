@@ -113,8 +113,8 @@ class Game {
         if (!this.player || this.isGameOver || !this.isValidMove(deltaX, deltaY)) {
             return false;
         }
-        this.pendingPlayerMove = { deltaX, deltaY };
-        return true;
+        // Process movement immediately
+        return this.processPlayerMove(deltaX, deltaY);
     }
 
     handleInput(direction, isPressed) {
@@ -256,63 +256,63 @@ class Game {
         
         let somethingChanged = false;
         
-        // Process pending player move
-        if (this.pendingPlayerMove) {
-            const moved = this.processPlayerMove(
-                this.pendingPlayerMove.deltaX, 
-                this.pendingPlayerMove.deltaY
-            );
-            if (moved) somethingChanged = true;
-            this.pendingPlayerMove = null;
+        // Handle continuous held input (keyboard and mouse)
+        if (this.inputManager) {
+            // Check for held keyboard key
+            const heldKey = this.inputManager.currentKey;
+            if (heldKey) {
+                const moved = this.processPlayerMove(heldKey.x, heldKey.y);
+                if (moved) somethingChanged = true;
+            }
+            
+            // Check for mouse drag
+            if (this.inputManager.isMouseDown && this.inputManager.currentMouseDirection) {
+                const direction = this.inputManager.currentMouseDirection;
+                const moved = this.processPlayerMove(direction.x, direction.y);
+                if (moved) somethingChanged = true;
+            }
         }
         
-        // Handle continuous mouse movement
-        if (this.inputManager.isMouseDown && this.inputManager.currentMouseDirection) {
-            const direction = this.inputManager.currentMouseDirection;
-            const moved = this.processPlayerMove(direction.x, direction.y);
-            if (moved) somethingChanged = true;
-        }
-        
-        // SIMPLIFIED: Process entities from bottom to top, right to left
-        const movedEntities = new Set(); // Track which entities moved to avoid double-processing
-        
+        // SIMPLIFIED: Collect entities first, then update (no double processing)
+        const entitiesToUpdate = [];
         for (let y = GRID_HEIGHT - 1; y >= 0; y--) {
             for (let x = GRID_WIDTH - 1; x >= 0; x--) {
                 const entity = this.entities.get(`${x},${y}`);
+                if (entity && typeof entity.update === 'function' && entity !== this.player) {
+                    entitiesToUpdate.push(entity);
+                }
+            }
+        }
+        
+        // Update entities (no double processing possible)
+        for (const entity of entitiesToUpdate) {
+            const oldX = entity.x;
+            const oldY = entity.y;
+            
+            const changed = entity.update(this.grid);
+            
+            if (changed) {
+                somethingChanged = true;
                 
-                if (entity && typeof entity.update === 'function' && 
-                    !movedEntities.has(entity) && entity !== this.player) {
-                    
-                    const oldX = entity.x;
-                    const oldY = entity.y;
-                    
-                    const changed = entity.update(this.grid);
-                    
-                    if (changed) {
-                        somethingChanged = true;
-                        movedEntities.add(entity);
-                        
-                        // Update entity position in our map
-                        if (oldX !== entity.x || oldY !== entity.y) {
-                            this.entities.delete(`${oldX},${oldY}`);
-                            this.entities.set(`${entity.x},${entity.y}`, entity);
-                        }
-                        
-                        // Check if falling object hits player
-                        if (entity.falling && this.player && 
-                            entity.x === this.player.x && entity.y === this.player.y) {
-                            this.gameOver(false);
-                            return;
-                        }
-                    }
-                    
-                    // ALWAYS check for sounds, regardless of movement
-                    if (typeof entity.getLandingSound === 'function') {
-                        const soundName = entity.getLandingSound();
-                        if (soundName) {
-                            this.soundManager.playSound(soundName);
-                        }
-                    }
+                // Update entity position in our map
+                if (oldX !== entity.x || oldY !== entity.y) {
+                    this.entities.delete(`${oldX},${oldY}`);
+                    this.entities.set(`${entity.x},${entity.y}`, entity);
+                }
+                
+                // Check if falling object hits player
+                if (entity.falling && this.player && 
+                    entity.x === this.player.x && entity.y === this.player.y) {
+                    this.gameOver(false);
+                    return;
+                }
+            }
+            
+            // ALWAYS check for sounds, regardless of movement
+            if (typeof entity.getLandingSound === 'function') {
+                const soundName = entity.getLandingSound();
+                if (soundName) {
+                    this.soundManager.playSound(soundName);
                 }
             }
         }
