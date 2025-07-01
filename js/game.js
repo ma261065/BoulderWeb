@@ -4,22 +4,20 @@ class Game {
         this.logger = new GameLogger(GameLogger.levels.DEBUG);
         this.config = new GameConfig(customConfig);
         
-        // Game state
-        this.grid = [];
+        // Game state - SIMPLIFIED: Grid stores ENTITY_TYPES, entities tracked by position
+        this.grid = [];  // Grid stores ENTITY_TYPES numbers (your existing format)
+        this.entities = new Map(); // Simple position-based entity lookup: "x,y" -> entity
         this.player = null;
         this.isGameOver = false;
         this.hasExitAppeared = false;
         this.diamondsCollected = 0;
         this.diamondsNeeded = this.config.get('levels.baseDiamondsNeeded');
         this.timeLeft = this.config.get('time.initialTime');
-        this.pendingPlayerMove = null; // Store pending player movement
+        this.pendingPlayerMove = null;
         
-        // Intervals and animation frames
+        // Intervals
         this.gameLoopId = null;
         this.timerIntervalId = null;
-
-        this.frameRequested = false;  // Flag to indicate a frame needs processing
-        this.frameActions = [];       // Actions to process in the next frame
         
         // Systems
         this.assetPreloader = new AssetPreloader(this.config);
@@ -34,11 +32,8 @@ class Game {
         // Renderer and other systems
         this.renderer = new Renderer(this);
         this.levelManager = new LevelManager(this);
-        
-        // UPDATED: Use HybridInputManager instead of InputManager
         this.inputManager = new HybridInputManager(this);
         
-        // Initialize the game
         this.init();
     }
     
@@ -52,10 +47,8 @@ class Game {
                 this.assetPreloader.preloadSounds()
             ]);
             
-            // Create first level
-            const levelData = this.levelManager.createLevel(this.levelManager.getCurrentLevel());
-            this.grid = levelData.grid;
-            this.player = levelData.player;
+            // Create first level - SIMPLIFIED: Use existing level manager but track entities simply
+            this.createLevel(this.levelManager.getCurrentLevel());
             
             // Reset game state
             this.diamondsCollected = 0;
@@ -73,27 +66,18 @@ class Game {
             );
             
             this.initializeCursorBehavior();
-
-            // Ensure the viewport is centered on the player
             this.renderer.centerViewportOnPlayer();
-            
-            // Ensure initial game state is drawn
             this.renderer.drawGame();
-            
-            // Handle orientation changes for mobile
             this.setupOrientationHandler();
 
             document.addEventListener('visibilitychange', () => {
                 if (document.hidden) {
-                    // Page is hidden, pause timers but don't show pause screen
                     this.pauseTimers();
                 } else {
-                    // Page is visible again, resume timers
                     this.resumeTimers();
                 }
             });
             
-            // Start game loops
             this.startGameLoop();
             this.startTimerLoop();
             
@@ -104,17 +88,35 @@ class Game {
         }
     }
 
+    // SIMPLIFIED: Create level and build simple entity map
+    createLevel(levelNum) {
+        // Use existing level manager to get grid and entities
+        const levelData = this.levelManager.createLevel(levelNum);
+        this.grid = levelData.grid; // Keep existing ENTITY_TYPES grid
+        this.player = levelData.player;
+        
+        // Build simple entity position map from existing entity instances
+        this.entities.clear();
+        if (this.levelManager.entityInstances) {
+            for (const entity of this.levelManager.entityInstances) {
+                this.entities.set(`${entity.x},${entity.y}`, entity);
+            }
+        }
+        
+        // Add player to entities map
+        if (this.player) {
+            this.entities.set(`${this.player.x},${this.player.y}`, this.player);
+        }
+    }
+
     movePlayer(deltaX, deltaY) {
         if (!this.player || this.isGameOver || !this.isValidMove(deltaX, deltaY)) {
             return false;
         }
-
-        // FIXED: Queue the movement instead of processing immediately
         this.pendingPlayerMove = { deltaX, deltaY };
-        return true; // Return true to indicate input was accepted
+        return true;
     }
 
-    // ADDED: Alternative method for input handling
     handleInput(direction, isPressed) {
         if (!isPressed || this.isGameOver) return;
         
@@ -131,100 +133,246 @@ class Game {
         }
     }
 
-    // ADDED: Validate movement direction
     isValidMove(deltaX, deltaY) {
         return Math.abs(deltaX) <= 1 && Math.abs(deltaY) <= 1 && 
-               (Math.abs(deltaX) + Math.abs(deltaY)) === 1; // Only cardinal directions
+               (Math.abs(deltaX) + Math.abs(deltaY)) === 1;
     }
 
-    requestFrame(action) {
-        if (action) {
-            this.frameActions.push(action);
+    // SIMPLIFIED: Process player move with existing grid format
+    processPlayerMove(deltaX, deltaY) {
+        if (!this.player) return false;
+        
+        const newX = this.player.x + deltaX;
+        const newY = this.player.y + deltaY;
+        
+        // Check bounds
+        if (newX < 0 || newX >= GRID_WIDTH || newY < 0 || newY >= GRID_HEIGHT) {
+            return false;
         }
-        this.frameRequested = true;
+        
+        const targetType = this.grid[newY][newX];
+        
+        // Handle different target types
+        if (targetType === ENTITY_TYPES.EMPTY) {
+            // Empty space - just move
+            this.grid[this.player.y][this.player.x] = ENTITY_TYPES.EMPTY;
+            this.entities.delete(`${this.player.x},${this.player.y}`);
+            
+            this.player.x = newX;
+            this.player.y = newY;
+            
+            this.grid[newY][newX] = ENTITY_TYPES.PLAYER;
+            this.entities.set(`${newX},${newY}`, this.player);
+            this.soundManager.playSound('move');
+            return true;
+            
+        } else if (targetType === ENTITY_TYPES.DIRT) {
+            // Dig through dirt
+            this.grid[this.player.y][this.player.x] = ENTITY_TYPES.EMPTY;
+            this.entities.delete(`${this.player.x},${this.player.y}`);
+            this.entities.delete(`${newX},${newY}`); // Remove dirt entity
+            
+            this.player.x = newX;
+            this.player.y = newY;
+            
+            this.grid[newY][newX] = ENTITY_TYPES.PLAYER;
+            this.entities.set(`${newX},${newY}`, this.player);
+            this.soundManager.playSound('dig');
+            return true;
+            
+        } else if (targetType === ENTITY_TYPES.DIAMOND) {
+            // Collect diamond
+            this.grid[this.player.y][this.player.x] = ENTITY_TYPES.EMPTY;
+            this.entities.delete(`${this.player.x},${this.player.y}`);
+            this.entities.delete(`${newX},${newY}`); // Remove diamond entity
+            
+            this.player.x = newX;
+            this.player.y = newY;
+            
+            this.grid[newY][newX] = ENTITY_TYPES.PLAYER;
+            this.entities.set(`${newX},${newY}`, this.player);
+            this.collectDiamond();
+            this.soundManager.playSound('diamond');
+            return true;
+            
+        } else if (targetType === ENTITY_TYPES.EXIT && this.hasExitAppeared) {
+            // Complete level
+            this.grid[this.player.y][this.player.x] = ENTITY_TYPES.EMPTY;
+            this.entities.delete(`${this.player.x},${this.player.y}`);
+            
+            this.player.x = newX;
+            this.player.y = newY;
+            
+            this.grid[newY][newX] = ENTITY_TYPES.PLAYER;
+            this.entities.set(`${newX},${newY}`, this.player);
+            this.levelComplete();
+            return true;
+        }
+        
+        // Try pushing boulders (only horizontally)
+        if (targetType === ENTITY_TYPES.BOULDER && deltaY === 0) { // Only allow horizontal pushes
+            const pushX = newX + deltaX;
+            const pushY = newY + deltaY;
+            
+            if (pushX >= 0 && pushX < GRID_WIDTH && 
+                pushY >= 0 && pushY < GRID_HEIGHT && 
+                this.grid[pushY][pushX] === ENTITY_TYPES.EMPTY) {
+                
+                // Get boulder entity
+                const boulder = this.entities.get(`${newX},${newY}`);
+                if (boulder) {
+                    // Move boulder
+                    this.grid[newY][newX] = ENTITY_TYPES.EMPTY;
+                    this.entities.delete(`${newX},${newY}`);
+                    
+                    boulder.x = pushX;
+                    boulder.y = pushY;
+                    
+                    this.grid[pushY][pushX] = ENTITY_TYPES.BOULDER;
+                    this.entities.set(`${pushX},${pushY}`, boulder);
+                    
+                    // Move player
+                    this.grid[this.player.y][this.player.x] = ENTITY_TYPES.EMPTY;
+                    this.entities.delete(`${this.player.x},${this.player.y}`);
+                    
+                    this.player.x = newX;
+                    this.player.y = newY;
+                    
+                    this.grid[newY][newX] = ENTITY_TYPES.PLAYER;
+                    this.entities.set(`${newX},${newY}`, this.player);
+                    
+                    this.soundManager.playSound('push');
+                    return true;
+                }
+            }
+        }
+        
+        return false;
     }
 
-    pauseTimers() {
-        if (this.gameLoopId) {
-            cancelAnimationFrame(this.gameLoopId);
-            this.gameLoopId = null;
-        }
-        if (this.timerLoopId) {
-            cancelAnimationFrame(this.timerLoopId);
-            this.timerLoopId = null;
-        }
-        // Store the time when we paused
-        this.pauseTime = performance.now();
-    }
-    
-    resumeTimers() {
+    // MASSIVELY SIMPLIFIED GAME LOOP!
+    tick() {
         if (this.isGameOver) return;
         
-        // Calculate how long we were paused
-        const pauseDuration = performance.now() - (this.pauseTime || performance.now());
+        let somethingChanged = false;
         
-        // Restart game loops
-        this.startGameLoop();
-        this.startTimerLoop();
+        // Process pending player move
+        if (this.pendingPlayerMove) {
+            const moved = this.processPlayerMove(
+                this.pendingPlayerMove.deltaX, 
+                this.pendingPlayerMove.deltaY
+            );
+            if (moved) somethingChanged = true;
+            this.pendingPlayerMove = null;
+        }
+        
+        // Handle continuous mouse movement
+        if (this.inputManager.isMouseDown && this.inputManager.currentMouseDirection) {
+            const direction = this.inputManager.currentMouseDirection;
+            const moved = this.processPlayerMove(direction.x, direction.y);
+            if (moved) somethingChanged = true;
+        }
+        
+        // SIMPLIFIED: Process entities from bottom to top, right to left
+        const movedEntities = new Set(); // Track which entities moved to avoid double-processing
+        
+        for (let y = GRID_HEIGHT - 1; y >= 0; y--) {
+            for (let x = GRID_WIDTH - 1; x >= 0; x--) {
+                const entity = this.entities.get(`${x},${y}`);
+                
+                if (entity && typeof entity.update === 'function' && 
+                    !movedEntities.has(entity) && entity !== this.player) {
+                    
+                    const oldX = entity.x;
+                    const oldY = entity.y;
+                    
+                    const changed = entity.update(this.grid);
+                    
+                    if (changed) {
+                        somethingChanged = true;
+                        movedEntities.add(entity);
+                        
+                        // Update entity position in our map
+                        if (oldX !== entity.x || oldY !== entity.y) {
+                            this.entities.delete(`${oldX},${oldY}`);
+                            this.entities.set(`${entity.x},${entity.y}`, entity);
+                        }
+                        
+                        // Check if falling object hits player
+                        if (entity.falling && this.player && 
+                            entity.x === this.player.x && entity.y === this.player.y) {
+                            this.gameOver(false);
+                            return;
+                        }
+                    }
+                    
+                    // ALWAYS check for sounds, regardless of movement
+                    if (typeof entity.getLandingSound === 'function') {
+                        const soundName = entity.getLandingSound();
+                        if (soundName) {
+                            this.soundManager.playSound(soundName);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Update viewport
+        if (this.player && this.renderer) {
+            const viewportChanged = this.renderer.updateViewportPosition();
+            somethingChanged = somethingChanged || viewportChanged;
+        }
+            
+        // Check if exit should appear
+        if (!this.hasExitAppeared && this.diamondsCollected >= this.diamondsNeeded) {
+            this.createExit();
+            this.hasExitAppeared = true;
+            somethingChanged = true;
+        }
+        
+        // Redraw if something changed
+        if (somethingChanged) {
+            this.renderer.drawGame();
+        }
     }
-    
-    initializeCursorBehavior() {
-        // Get the canvas element
-        const canvas = document.getElementById('gameCanvas');
-        
-        // Timer variable to track inactivity
-        let cursorTimeout;
-        
-        // Function to hide cursor after inactivity
-        const hideCursor = () => {
-            canvas.style.cursor = 'none';
-        };
-        
-        // Set cursor to visible whenever mouse moves
-        canvas.addEventListener('mousemove', () => {
-            // ADDED: Don't show cursor if mouse is being used for game controls
-            if (this.inputManager && this.inputManager.isMouseDown) {
-                return; // Keep cursor hidden during game control
+
+    // SIMPLIFIED: Create exit directly in grid
+    createExit() {
+        // Find a suitable spot for the exit (simple version)
+        for (let y = 1; y < GRID_HEIGHT - 1; y++) {
+            for (let x = 1; x < GRID_WIDTH - 1; x++) {
+                if (this.grid[y][x] === ENTITY_TYPES.DIRT) {
+                    // Remove dirt entity
+                    this.entities.delete(`${x},${y}`);
+                    
+                    // Create and place exit
+                    const exit = new Exit(x, y);
+                    this.grid[y][x] = ENTITY_TYPES.EXIT;
+                    this.entities.set(`${x},${y}`, exit);
+                    return;
+                }
             }
-            
-            // Show cursor
-            canvas.style.cursor = 'default';
-            
-            // Clear previous timeout if any
-            if (cursorTimeout) {
-                clearTimeout(cursorTimeout);
-            }
-            
-            // Set new timeout to hide cursor after 2 seconds of inactivity
-            cursorTimeout = setTimeout(hideCursor, 2000);
-        });
-        
-        // Hide cursor when mouse leaves the canvas
-        canvas.addEventListener('mouseleave', () => {
-            // ADDED: Only restore cursor if not using for controls
-            if (!this.inputManager || !this.inputManager.isMouseDown) {
-                canvas.style.cursor = 'default';
-            }
-            if (cursorTimeout) {
-                clearTimeout(cursorTimeout);
-            }
-        });
-        
-        // Hide cursor when game starts (after a brief delay)
-        setTimeout(hideCursor, 2000);
+        }
     }
-    
+
+    collectDiamond() {
+        this.diamondsCollected++;
+        this.renderer.updateUI(
+            this.levelManager.getCurrentLevel(),
+            this.diamondsCollected,
+            this.diamondsNeeded,
+            this.timeLeft
+        );
+    }
+
     startNewLevel(level) {
         this.logger.info(`Starting level ${level}`);
         
-        // Stop any existing loops first
         this.stopGameLoop();
         this.stopTimerLoop();
         
-        // Reset level-specific state
-        const levelData = this.levelManager.createLevel(level);
-        this.grid = levelData.grid;
-        this.player = levelData.player;
+        // Create new level
+        this.createLevel(level);
         
         // Reset game state
         this.diamondsCollected = 0;
@@ -234,7 +382,6 @@ class Game {
                             (level * this.config.get('levels.diamondsIncrementPerLevel'));
         this.isGameOver = false;
         
-        // Update UI
         this.renderer.updateUI(
             this.levelManager.getCurrentLevel(),
             this.diamondsCollected,
@@ -242,63 +389,62 @@ class Game {
             this.timeLeft
         );
         
-        // Update viewport for new level
         this.renderer.centerViewportOnPlayer();
-        
-        // Draw initial state - this will clear any message overlays
         this.renderer.drawGame();
         
-        // ADDED: Reactivate input manager for new level
         if (this.inputManager) {
             this.inputManager.activate();
         }
         
-        // Start game loops
         this.startGameLoop();
         this.startTimerLoop();
     }
-    
-    collectDiamond() {
-        this.diamondsCollected++;
+
+    // Rest of the methods remain the same...
+    initializeCursorBehavior() {
+        const canvas = document.getElementById('gameCanvas');
+        let cursorTimeout;
         
-        // Update UI
-        this.renderer.updateUI(
-            this.levelManager.getCurrentLevel(),
-            this.diamondsCollected,
-            this.diamondsNeeded,
-            this.timeLeft
-        );
+        const hideCursor = () => {
+            canvas.style.cursor = 'none';
+        };
         
-        // Check if all diamonds collected
-        if (this.diamondsCollected >= this.diamondsNeeded && !this.hasExitAppeared) {
-            this.levelManager.createExit(this.grid);
-            this.hasExitAppeared = true;
-            this.renderer.drawGame();
-        }
+        canvas.addEventListener('mousemove', () => {
+            if (this.inputManager && this.inputManager.isMouseDown) {
+                return;
+            }
+            canvas.style.cursor = 'default';
+            if (cursorTimeout) {
+                clearTimeout(cursorTimeout);
+            }
+            cursorTimeout = setTimeout(hideCursor, 2000);
+        });
+        
+        canvas.addEventListener('mouseleave', () => {
+            if (!this.inputManager || !this.inputManager.isMouseDown) {
+                canvas.style.cursor = 'default';
+            }
+            if (cursorTimeout) {
+                clearTimeout(cursorTimeout);
+            }
+        });
+        
+        setTimeout(hideCursor, 2000);
     }
-    
+
     startGameLoop() {
-        // Clear any existing game loop first
         this.stopGameLoop();
-        
         const tickInterval = this.config.get('gameLoop.updateInterval');
-        
-        // Start a new interval
         this.gameLoopId = setInterval(() => {
             if (!this.isGameOver) {
-                this.tick(); // Process one tick
+                this.tick();
             }
         }, tickInterval);
-        
-        console.log("Game loop started with interval:", tickInterval);
     }
     
     startTimerLoop() {
-        // Clear any existing timer loop first
         this.stopTimerLoop();
-        
         const timerInterval = this.config.get('gameLoop.timerInterval');
-        
         this.timerIntervalId = setInterval(() => {
             if (!this.isGameOver) {
                 this.updateTimer();
@@ -336,17 +482,11 @@ class Game {
         }
     }
 
-    // Add orientation change handling
     setupOrientationHandler() {
-        // Initial check
         this.handleOrientationChange();
-        
-        // Add listener for orientation changes
         window.addEventListener('resize', () => {
             this.handleOrientationChange();
         });
-        
-        // If device orientation API is available, use it too
         if (window.DeviceOrientationEvent) {
             window.addEventListener('orientationchange', () => {
                 this.handleOrientationChange();
@@ -355,155 +495,42 @@ class Game {
     }
 
     handleOrientationChange() {
-        // Recalculate viewport
         this.renderer.handleResize();
-        
-        // Update touch controls layout if available
         if (this.inputManager && typeof this.inputManager.updateTouchControlsForOrientation === 'function') {
             this.inputManager.updateTouchControlsForOrientation();
         }
-        
-        // Center viewport on player
         this.renderer.centerViewportOnPlayer();
-        
-        // Force redraw
         this.renderer.drawGame();
     }
 
-    tick() {
+    pauseTimers() {
+        this.stopGameLoop();
+        this.stopTimerLoop();
+        this.pauseTime = performance.now();
+    }
+    
+    resumeTimers() {
         if (this.isGameOver) return;
-        
-        let somethingChanged = false;
-        
-        if (this.pendingPlayerMove) {
-            const moved = this.player.tryMove(
-                this.grid, 
-                this.pendingPlayerMove.deltaX, 
-                this.pendingPlayerMove.deltaY, 
-                this.soundManager, 
-                this
-            );
-            
-            if (moved) {
-                somethingChanged = true;
-            }
-            
-            this.pendingPlayerMove = null; // Clear the queued move
-        }
-        else if (this.inputManager.isMouseDown && this.inputManager.currentMouseDirection) {
-            const direction = this.inputManager.currentMouseDirection;
-            const moved = this.player.tryMove(
-                this.grid, 
-                direction.x, 
-                direction.y, 
-                this.soundManager, 
-                this
-            );
-            if (moved) somethingChanged = true;
-        }
-        
-        // UPDATED: Simplified player movement handling 
-        // The hybrid input manager now calls movePlayer() directly
-        // No need to check keys here since that's handled by the input manager
-        
-        // 2. Process entity physics (bottom to top) - one step per entity per tick
-        const movingEntities = this.levelManager.getMovingEntities();
-        
-        // Sort entities from bottom to top for natural falling
-        movingEntities.sort((a, b) => {
-            if (a.y !== b.y) return b.y - a.y; // Bottom to top
-            return b.x - a.x; // Right to left
-        });
-        
-        // Update each entity - ONE move per tick, in the proper order
-        for (const entity of movingEntities) {
-            // Store original position for entity instance updating
-            const originalX = entity.x;
-            const originalY = entity.y;
-            
-            // Update entity
-            const changed = entity.update(this.grid);
-            
-            // ALWAYS check for sounds, regardless of movement
-            if (typeof entity.getLandingSound === 'function') {
-                const soundName = entity.getLandingSound();
-                if (soundName) {
-                    this.soundManager.playSound(soundName);
-                }
-            }
-            
-            if (changed) {
-                somethingChanged = true;
-                
-                // Update entity position in the levelManager
-                if (originalX !== entity.x || originalY !== entity.y) {
-                    this.levelManager.updateEntityPosition(
-                        entity.type, 
-                        originalX, 
-                        originalY, 
-                        entity.x, 
-                        entity.y
-                    );
-                    
-                    // Check if it falls on player
-                    if (entity.falling && 
-                        this.player && 
-                        this.player.y === entity.y && 
-                        this.player.x === entity.x) {
-                        this.gameOver(false);
-                        return;
-                    }
-                }
-            }
-        }
-
-        if (this.player && this.renderer) {
-            const viewportChanged = this.renderer.updateViewportPosition();
-            somethingChanged = somethingChanged || viewportChanged;
-        }
-        
-        // Sync entity list with grid
-        this.syncEntitiesWithGrid();
-            
-        // Check if exit should appear
-        if (!this.hasExitAppeared && this.diamondsCollected >= this.diamondsNeeded) {
-            this.levelManager.createExit(this.grid);
-            this.hasExitAppeared = true;
-            somethingChanged = true;
-        }
-        
-        // Redraw if something changed
-        if (somethingChanged) {
-            this.renderer.drawGame();
-        }
+        const pauseDuration = performance.now() - (this.pauseTime || performance.now());
+        this.startGameLoop();
+        this.startTimerLoop();
     }
 
-    // REMOVED: getActiveArrowKey method (no longer needed with hybrid input)
-   
     levelComplete() {
-        // Cancel existing loops
-        if (this.gameLoopId) {
-            cancelAnimationFrame(this.gameLoopId);
-        }
-        if (this.timerIntervalId) {
-            clearInterval(this.timerIntervalId);
-        }
+        this.stopGameLoop();
+        this.stopTimerLoop();
         
-        // ADDED: Deactivate input during level transition
         if (this.inputManager) {
             this.inputManager.deactivate();
         }
         
-        // Show level complete message
         this.renderer.drawMessage(
             'Level Complete!', 
             `Starting Level ${this.levelManager.getCurrentLevel() + 1} in 3 seconds...`
         );
         
-        // Play level complete sound
         this.soundManager.playSound('levelComplete');
         
-        // Start new level after delay
         setTimeout(() => {
             const nextLevel = this.levelManager.nextLevel();
             this.startNewLevel(nextLevel);
@@ -511,27 +538,21 @@ class Game {
     }
     
     gameOver(won) {
-        if (this.isGameOver) return; // Prevent multiple calls
+        if (this.isGameOver) return;
         
-        // Ensure loops are stopped
         this.stopGameLoop();
         this.stopTimerLoop();
         
-        // ADDED: Deactivate input manager during game over
         if (this.inputManager) {
             this.inputManager.deactivate();
         }
     
         this.isGameOver = true;
-        
-        // Play game over sound
         this.soundManager.playSound('gameOver');
         
-        // Detect if this is a touch device
         const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
         const restartText = isTouchDevice ? 'Tap Restart to play again' : 'Press Enter to restart';
         
-        // Show game over message
         this.renderer.drawMessage(
             won ? 'You Win!' : 'Game Over',
             restartText,
@@ -541,25 +562,16 @@ class Game {
 
     cleanup() {
         console.log("Cleaning up game resources...");
-        
-        // Stop game and timer loops
         this.stopGameLoop();
         this.stopTimerLoop();
         
-        // ADDED: Clean up hybrid input manager
         if (this.inputManager) {
             this.inputManager.destroy();
         }
         
-        // Clean up event listeners
-        if (this.inputManager) {
-            // Remove any event listeners that might have been added directly to the window
-            window.removeEventListener('resize', this.handleResize);
-            window.removeEventListener('orientationchange', this.handleOrientationChange);
-        }
-        
-        // Clear all references for garbage collection
+        // Clear all references
         this.grid = null;
+        this.entities.clear();
         this.player = null;
         this.levelManager = null;
         this.renderer = null;
@@ -570,192 +582,41 @@ class Game {
     }
     
     restart() {
-        // Stop any existing loops
         this.stopGameLoop();
         this.stopTimerLoop();
         
-        // Reset game state
         this.isGameOver = false;
         this.diamondsCollected = 0;
         this.hasExitAppeared = false;
         this.timeLeft = this.config.get('time.initialTime');
         this.diamondsNeeded = this.config.get('levels.baseDiamondsNeeded');
         
-        // ADDED: Reactivate input manager on restart
         if (this.inputManager) {
             this.inputManager.activate();
         }
         
-        // Show splash screen when game is restarted
         if (typeof endGameAndShowSplash === 'function') {
             endGameAndShowSplash();
         } else {
-            // Fallback to original implementation
             this.startNewLevel(this.levelManager.getCurrentLevel());
         }
     }
-    
-    // Ensure entities match grid state
-    syncEntitiesWithGrid() {
-        console.log("Synchronizing entities with grid...");
-        
-        // More robust entity synchronization
-        const entitiesToKeep = [];
-        
-        // Add player first - player is always needed
-        if (this.player) {
-            entitiesToKeep.push(this.player);
-            console.log(`Added player at (${this.player.x}, ${this.player.y})`);
-        }
-        
-        // Get grid dimensions from config
-        const gridWidth = this.config.get('grid.width');
-        const gridHeight = this.config.get('grid.height');
-        
-        // Count entities by type before sync
-        const initialCounts = {};
-        this.levelManager.entityInstances.forEach(entity => {
-            const typeName = Object.keys(ENTITY_TYPES).find(key => ENTITY_TYPES[key] === entity.type) || 'UNKNOWN';
-            initialCounts[typeName] = (initialCounts[typeName] || 0) + 1;
-        });
-        console.log("Entities before sync:", initialCounts);
-        
-        // Iterate through grid and build entity list
-        for (let y = 0; y < gridHeight; y++) {
-            for (let x = 0; x < gridWidth; x++) {
-                const tileType = this.grid[y][x];
-                
-                // Skip empty tiles and player (already added)
-                if (tileType === ENTITY_TYPES.EMPTY || 
-                    (tileType === ENTITY_TYPES.PLAYER && this.player && this.player.x === x && this.player.y === y)) {
-                    continue;
-                }
-                
-                // Find or create entity for this tile
-                let existingEntity = this.levelManager.entityInstances.find(e => 
-                    e.x === x && e.y === y && e.type === tileType);
-                
-                if (existingEntity) {
-                    // Make sure x and y match grid position (defensive)
-                    if (existingEntity.x !== x || existingEntity.y !== y) {
-                        console.warn(`Fixing misaligned entity position: from (${existingEntity.x},${existingEntity.y}) to (${x},${y})`);
-                        existingEntity.x = x;
-                        existingEntity.y = y;
-                    }
-                    
-                    entitiesToKeep.push(existingEntity);
-                } else {
-                    // Create a new entity if needed
-                    let newEntity = null;
-                    switch (tileType) {
-                        case ENTITY_TYPES.WALL:
-                            newEntity = new Wall(x, y);
-                            break;
-                        case ENTITY_TYPES.DIRT:
-                            newEntity = new Dirt(x, y);
-                            break;
-                        case ENTITY_TYPES.BOULDER:
-                            newEntity = new Boulder(x, y);
-                            console.log(`Created new Boulder at (${x}, ${y})`);
-                            break;
-                        case ENTITY_TYPES.DIAMOND:
-                            newEntity = new Diamond(x, y);
-                            break;
-                        case ENTITY_TYPES.EXIT:
-                            newEntity = new Exit(x, y);
-                            break;
-                    }
-                    
-                    if (newEntity) {
-                        entitiesToKeep.push(newEntity);
-                    }
-                }
-            }
-        }
-        
-        // Count entities by type after sync
-        const finalCounts = {};
-        entitiesToKeep.forEach(entity => {
-            const typeName = Object.keys(ENTITY_TYPES).find(key => ENTITY_TYPES[key] === entity.type) || 'UNKNOWN';
-            finalCounts[typeName] = (finalCounts[typeName] || 0) + 1;
-        });
-        
-        // Log entity synchronization details
-        console.log("Entities after sync:", finalCounts);
-        console.log(`Entity synchronization: ${this.levelManager.entityInstances.length} -> ${entitiesToKeep.length}`);
-        
-        // Check for missing boulders
-        const oldBoulders = this.levelManager.entityInstances.filter(e => e.type === ENTITY_TYPES.BOULDER).length;
-        const newBoulders = entitiesToKeep.filter(e => e.type === ENTITY_TYPES.BOULDER).length;
-        
-        if (oldBoulders !== newBoulders) {
-            console.warn(`Boulder count changed during sync: ${oldBoulders} -> ${newBoulders}`);
-        }
-        
-        // Replace entity instances with synchronized list
-        this.levelManager.entityInstances = entitiesToKeep;
-    }
-    
-    // Performance tracking method
-    trackPerformance(methodName, startTime) {
-        const endTime = performance.now();
-        const duration = endTime - startTime;
-        
-        this.logger.debug('Performance tracking', {
-            method: methodName,
-            duration: duration.toFixed(2) + 'ms'
-        });
-    }
-    
-    // Difficulty scaling method
-    scaleDifficulty() {
-        // Adjust game parameters based on current level
-        const currentLevel = this.levelManager.getCurrentLevel();
-        
-        // Example difficulty scaling
-        const baseTime = this.config.get('time.initialTime');
-        const timeReduction = Math.floor(currentLevel * 5); // Reduce time by 5 seconds per level
-        const newTime = Math.max(60, baseTime - timeReduction); // Minimum 60 seconds
-        
-        this.timeLeft = newTime;
-        
-        // Potentially increase diamonds needed
-        const baseDiamonds = this.config.get('levels.baseDiamondsNeeded');
-        const diamondIncrement = this.config.get('levels.diamondsIncrementPerLevel');
-        this.diamondsNeeded = baseDiamonds + (currentLevel * diamondIncrement);
-        
-        this.logger.info('Difficulty scaled', {
-            level: currentLevel,
-            timeLeft: this.timeLeft,
-            diamondsNeeded: this.diamondsNeeded
-        });
-    }
-    
-    // Advanced pause and resume functionality
+
     pause() {
         if (this.isGameOver) return;
+        this.stopGameLoop();
+        this.stopTimerLoop();
         
-        // Cancel existing loops
-        if (this.gameLoopId) {
-            cancelAnimationFrame(this.gameLoopId);
-        }
-        if (this.timerIntervalId) {
-            clearInterval(this.timerIntervalId);
-        }
-        
-        // ADDED: Deactivate input during pause
         if (this.inputManager) {
             this.inputManager.deactivate();
         }
         
-        // Draw pause message
         this.renderer.drawMessage(
             'PAUSED', 
             'Press ESC to continue',
             '#FFFF00'
         );
         
-        // Add pause event listener
         this.pauseListener = (e) => {
             if (e.key === 'Escape') {
                 this.resume();
@@ -765,36 +626,16 @@ class Game {
     }
     
     resume() {
-        // Remove pause event listener
         if (this.pauseListener) {
             window.removeEventListener('keydown', this.pauseListener);
         }
         
-        // ADDED: Reactivate input after pause
         if (this.inputManager) {
             this.inputManager.activate();
         }
         
-        // Redraw game
         this.renderer.drawGame();
-        
-        // Restart game loops
         this.startGameLoop();
         this.startTimerLoop();
     }
 }
-
-// Attach performance tracking to key methods
-const performanceWrapper = (originalMethod) => {
-    return function(...args) {
-        const startTime = performance.now();
-        const result = originalMethod.apply(this, args);
-        this.trackPerformance(originalMethod.name, startTime);
-        return result;
-    };
-};
-
-// Example of wrapping methods with performance tracking
-Game.prototype.update = performanceWrapper(Game.prototype.update);
-Game.prototype.levelComplete = performanceWrapper(Game.prototype.levelComplete);
-Game.prototype.gameOver = performanceWrapper(Game.prototype.gameOver);

@@ -1,5 +1,3 @@
-// Updated Renderer class with improved player tracking
-
 class Renderer {
     constructor(game) {
         this.game = game;
@@ -110,6 +108,56 @@ class Renderer {
         return false;
     }
     
+    // SIMPLIFIED: Single method to draw any entity type
+    drawEntity(entityType, x, y) {
+        const spriteNames = {
+            [ENTITY_TYPES.WALL]: 'wall',
+            [ENTITY_TYPES.DIRT]: 'dirt', 
+            [ENTITY_TYPES.BOULDER]: 'boulder',
+            [ENTITY_TYPES.DIAMOND]: 'diamond',
+            [ENTITY_TYPES.PLAYER]: 'player',
+            [ENTITY_TYPES.EXIT]: 'exit'
+        };
+        
+        const fallbacks = {
+            [ENTITY_TYPES.WALL]: () => {
+                this.ctx.fillStyle = '#555';
+                this.ctx.fillRect(x, y, this.TILE_SIZE, this.TILE_SIZE);
+            },
+            [ENTITY_TYPES.DIRT]: () => {
+                this.ctx.fillStyle = '#8B4513';
+                this.ctx.fillRect(x + 2, y + 2, this.TILE_SIZE - 4, this.TILE_SIZE - 4);
+            },
+            [ENTITY_TYPES.BOULDER]: () => {
+                this.ctx.fillStyle = '#AAA';
+                this.ctx.beginPath();
+                this.ctx.arc(x + this.TILE_SIZE/2, y + this.TILE_SIZE/2, this.TILE_SIZE/2 - 4, 0, Math.PI * 2);
+                this.ctx.fill();
+            },
+            [ENTITY_TYPES.DIAMOND]: () => {
+                this.ctx.fillStyle = '#00FFFF';
+                this.ctx.beginPath();
+                this.ctx.arc(x + this.TILE_SIZE/2, y + this.TILE_SIZE/2, this.TILE_SIZE/2 - 4, 0, Math.PI * 2);
+                this.ctx.fill();
+            },
+            [ENTITY_TYPES.PLAYER]: () => {
+                this.ctx.fillStyle = '#FF0000';
+                this.ctx.fillRect(x, y, this.TILE_SIZE, this.TILE_SIZE);
+            },
+            [ENTITY_TYPES.EXIT]: () => {
+                this.ctx.fillStyle = '#00FF00';
+                this.ctx.fillRect(x, y, this.TILE_SIZE, this.TILE_SIZE);
+            }
+        };
+        
+        const spriteName = spriteNames[entityType];
+        if (spriteName && window.spriteManager && window.spriteManager.getSprite(spriteName)) {
+            this.ctx.drawImage(window.spriteManager.getSprite(spriteName), x, y, this.TILE_SIZE, this.TILE_SIZE);
+        } else if (fallbacks[entityType]) {
+            fallbacks[entityType]();
+        }
+    }
+    
     drawGame() {
         // Ensure grid and viewport are available
         if (!this.game || !this.game.grid || this.game.grid.length === 0 || !this.viewport) {
@@ -154,26 +202,9 @@ class Renderer {
                 const drawX = x * this.TILE_SIZE + offsetX;
                 const drawY = y * this.TILE_SIZE + offsetY;
                 
-                // Draw based on tile type
-                switch (tileType) {
-                    case ENTITY_TYPES.WALL:
-                        this.drawWall(drawX, drawY);
-                        break;
-                    case ENTITY_TYPES.DIRT:
-                        this.drawDirt(drawX, drawY);
-                        break;
-                    case ENTITY_TYPES.BOULDER:
-                        this.drawBoulder(drawX, drawY);
-                        break;
-                    case ENTITY_TYPES.DIAMOND:
-                        this.drawDiamond(drawX, drawY);
-                        break;
-                    case ENTITY_TYPES.PLAYER:
-                        this.drawPlayer(drawX, drawY);
-                        break;
-                    case ENTITY_TYPES.EXIT:
-                        this.drawExit(drawX, drawY);
-                        break;
+                // Use unified drawing method - skip empty tiles
+                if (tileType !== ENTITY_TYPES.EMPTY) {
+                    this.drawEntity(tileType, drawX, drawY);
                 }
             }
         }
@@ -260,64 +291,6 @@ class Renderer {
         }
     }
     
-    drawWall(x, y) {
-        if (window.spriteManager && window.spriteManager.getSprite('wall')) {
-            this.ctx.drawImage(window.spriteManager.getSprite('wall'), x, y, this.TILE_SIZE, this.TILE_SIZE);
-        } else {
-            this.ctx.fillStyle = '#555';
-            this.ctx.fillRect(x, y, this.TILE_SIZE, this.TILE_SIZE);
-        }
-    }
-    
-    drawDirt(x, y) {
-        if (window.spriteManager && window.spriteManager.getSprite('dirt')) {
-            this.ctx.drawImage(window.spriteManager.getSprite('dirt'), x, y, this.TILE_SIZE, this.TILE_SIZE);
-        } else {
-            this.ctx.fillStyle = '#8B4513';
-            this.ctx.fillRect(x + 2, y + 2, this.TILE_SIZE - 4, this.TILE_SIZE - 4);
-        }
-    }
-    
-    drawBoulder(x, y) {
-        if (window.spriteManager && window.spriteManager.getSprite('boulder')) {
-            this.ctx.drawImage(window.spriteManager.getSprite('boulder'), x, y, this.TILE_SIZE, this.TILE_SIZE);
-        } else {
-            this.ctx.fillStyle = '#AAA';
-            this.ctx.beginPath();
-            this.ctx.arc(x + this.TILE_SIZE/2, y + this.TILE_SIZE/2, this.TILE_SIZE/2 - 4, 0, Math.PI * 2);
-            this.ctx.fill();
-        }
-    }
-    
-    drawDiamond(x, y) {
-        if (window.spriteManager && window.spriteManager.getSprite('diamond')) {
-            this.ctx.drawImage(window.spriteManager.getSprite('diamond'), x, y, this.TILE_SIZE, this.TILE_SIZE);
-        } else {
-            this.ctx.fillStyle = '#00FFFF';
-            this.ctx.beginPath();
-            this.ctx.arc(x + this.TILE_SIZE/2, y + this.TILE_SIZE/2, this.TILE_SIZE/2 - 4, 0, Math.PI * 2);
-            this.ctx.fill();
-        }
-    }
-    
-    drawPlayer(x, y) {
-        if (window.spriteManager && window.spriteManager.getSprite('player')) {
-            this.ctx.drawImage(window.spriteManager.getSprite('player'), x, y, this.TILE_SIZE, this.TILE_SIZE);
-        } else {
-            this.ctx.fillStyle = '#FF0000';
-            this.ctx.fillRect(x, y, this.TILE_SIZE, this.TILE_SIZE);
-        }
-    }
-    
-    drawExit(x, y) {
-        if (window.spriteManager && window.spriteManager.getSprite('exit')) {
-            this.ctx.drawImage(window.spriteManager.getSprite('exit'), x, y, this.TILE_SIZE, this.TILE_SIZE);
-        } else {
-            this.ctx.fillStyle = '#00FF00';
-            this.ctx.fillRect(x, y, this.TILE_SIZE, this.TILE_SIZE);
-        }
-    }
-    
     drawMessage(message, subMessage, color) {
         // Draw semi-transparent overlay
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
@@ -345,8 +318,8 @@ class Renderer {
         const diamondsInfo = document.getElementById('diamonds-info');
         const timeInfo = document.getElementById('time-info');
         
-        levelInfo.textContent = `Level: ${level}`;
-        diamondsInfo.textContent = `Diamonds: ${diamondsCollected}/${diamondsNeeded}`;
-        timeInfo.textContent = `Time: ${timeLeft}`;
+        if (levelInfo) levelInfo.textContent = `Level: ${level}`;
+        if (diamondsInfo) diamondsInfo.textContent = `Diamonds: ${diamondsCollected}/${diamondsNeeded}`;
+        if (timeInfo) timeInfo.textContent = `Time: ${timeLeft}`;
     }
 }

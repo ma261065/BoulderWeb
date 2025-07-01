@@ -33,12 +33,6 @@ class SoundManager {
         });
     }
     
-    playSoundWithProbability(name, probability = 0.1) {
-        if (Math.random() < probability) {
-            this.playSound(name);
-        }
-    }
-    
     toggleSound() {
         this.enabled = !this.enabled;
         this.soundToggle.textContent = `Sound: ${this.enabled ? 'ON' : 'OFF'}`;
