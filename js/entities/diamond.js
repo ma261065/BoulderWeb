@@ -7,41 +7,33 @@ class Diamond extends Entity {
     }
     
     update(grid) {
-        // Reset sound flag
         this.justLanded = false;
         const wasFalling = this.falling;
         this.falling = false;
         
         let moved = false;
+        const effects = []; // Collect all effects to return
         
         // Check if we can fall straight down - ONE TILE MOVEMENT ONLY
         if (Entity.isInBounds(this.x, this.y + 1)) {
             const belowType = grid[this.y + 1][this.x];
             
-            // Determine if we can fall
-            let canFall = false;
-            
             if (belowType === ENTITY_TYPES.EMPTY) {
-                // Always fall into empty space
-                canFall = true;
-            } else if (belowType === ENTITY_TYPES.PLAYER) {
-                // Only fall into player space if we were already falling
-                // This prevents "instant death" when player moves under stationary diamond
-                canFall = this.fallStarted;
-            }
-            
-            if (canFall) {
-                // Mark the current position as empty
+                // Fall into empty space
                 grid[this.y][this.x] = ENTITY_TYPES.EMPTY;
-                
-                // Move down ONE tile
                 this.y++;
-                
-                // Update the new position on the grid
                 grid[this.y][this.x] = this.type;
-                
                 this.falling = true;
-                this.fallStarted = true; // Mark that this diamond has started falling
+                this.fallStarted = true;
+                moved = true;
+                
+            } else if (belowType === ENTITY_TYPES.PLAYER && this.fallStarted) {
+                // Only fall into player space if already falling
+                // This prevents "instant death" when player moves under stationary diamond
+                grid[this.y][this.x] = ENTITY_TYPES.EMPTY;
+                this.y++;
+                grid[this.y][this.x] = this.type;
+                this.falling = true;
                 moved = true;
             }
         }
@@ -57,15 +49,9 @@ class Diamond extends Entity {
                 grid[this.y][this.x - 1] === ENTITY_TYPES.EMPTY && 
                 grid[this.y + 1][this.x - 1] === ENTITY_TYPES.EMPTY) {
                 
-                // Mark the current position as empty
                 grid[this.y][this.x] = ENTITY_TYPES.EMPTY;
-                
-                // Move left ONE tile
                 this.x--;
-                
-                // Update the new position on the grid
                 grid[this.y][this.x] = this.type;
-                
                 this.fallStarted = true; // Rolling also counts as starting to fall
                 moved = true;
             }
@@ -75,15 +61,9 @@ class Diamond extends Entity {
                     grid[this.y][this.x + 1] === ENTITY_TYPES.EMPTY && 
                     grid[this.y + 1][this.x + 1] === ENTITY_TYPES.EMPTY) {
                 
-                // Mark the current position as empty
                 grid[this.y][this.x] = ENTITY_TYPES.EMPTY;
-                
-                // Move right ONE tile
                 this.x++;
-                
-                // Update the new position on the grid
                 grid[this.y][this.x] = this.type;
-                
                 this.fallStarted = true; // Rolling also counts as starting to fall
                 moved = true;
             }
@@ -104,9 +84,14 @@ class Diamond extends Entity {
         // Check if we just stopped falling (for sound)
         if (wasFalling && !this.falling) {
             this.justLanded = true;
+            effects.push({
+                type: EFFECT_TYPES.SOUND,
+                sound: 'diamond'
+            });
         }
         
-        return moved;
+        // Return both movement status and effects
+        return { moved, effects };
     }
     
     draw(ctx, x, y, tileSize = TILE_SIZE) {
@@ -120,9 +105,5 @@ class Diamond extends Entity {
             ctx.arc(x + tileSize/2, y + tileSize/2, tileSize/2 - 4, 0, Math.PI * 2);
             ctx.fill();
         }
-    }
-    
-    getLandingSound() {
-        return this.justLanded ? 'diamond' : null;
     }
 }

@@ -1,3 +1,11 @@
+// Effect types that entities can return from their update() method
+const EFFECT_TYPES = {
+    REMOVE: 'remove',           // Remove an entity
+    TRANSFORM: 'transform',     // Change entity type at position
+    CREATE: 'create',          // Create new entity
+    SOUND: 'sound'             // Play a sound
+};
+
 class Game {
     constructor(customConfig = {}) {
         // Initialize logging and configuration
@@ -89,7 +97,7 @@ class Game {
     }
 
     // SIMPLIFIED: Create level and build simple entity map
-    createLevel(levelNum) {
+    createLevelx(levelNum) {
         // Use existing level manager to get grid and entities
         const levelData = this.levelManager.createLevel(levelNum);
         this.grid = levelData.grid; // Keep existing ENTITY_TYPES grid
@@ -110,7 +118,7 @@ class Game {
     }
 
     // SIMPLIFIED: Create level and build simple entity map
-    createLevelx(levelNum) {
+    createLevel(levelNum) {
         console.log("Creating boulder fall test level...");
         
         // Clear entities
@@ -140,12 +148,12 @@ class Game {
         const playerY = GRID_HEIGHT - 6; 
         
         // Position boulder #1 on a dirt platform (stationary)
-        const boulderX = Math.floor(GRID_WIDTH / 2);
+        const boulderX = playerX - 4;
         const boulderY = playerY - 2; // Boulder 2 levels above player
         const platformY = boulderY + 1; // Dirt platform 1 level above player
         
         // Position boulder #2 (falling boulder) - to the right
-        const boulder2X = boulderX + 4;  // 4 spaces to the right
+        const boulder2X = boulderX;  // 4 spaces to the right
         const boulder2Y = playerY - 10;  // 10 spaces above player level
         const landingDirtY = playerY - 1; // Where boulder #2 will land
                 
@@ -155,8 +163,8 @@ class Game {
         this.entities.set(`${playerX},${playerY}`, this.player);
         
         // Create and place boulder #1 (stationary, never fallen)
-        const boulder1 = new Boulder(boulderX, boulderY);
-        this.grid[boulderY][boulderX] = ENTITY_TYPES.BOULDER;
+        const boulder1 = new Diamond(boulderX, boulderY);
+        this.grid[boulderY][boulderX] = ENTITY_TYPES.DIAMOND;
         this.entities.set(`${boulderX},${boulderY}`, boulder1);
         
         // Create dirt platform supporting boulder #1
@@ -165,8 +173,8 @@ class Game {
         this.entities.set(`${boulderX},${platformY}`, supportDirt);
         
         // Create and place boulder #2 (falling boulder) - to the right of player path
-        const boulder2 = new Diamond(boulder2X, boulder2Y);
-        this.grid[boulder2Y][boulder2X] = ENTITY_TYPES.DIAMOND;
+        const boulder2 = new Boulder(boulder2X, boulder2Y);
+        this.grid[boulder2Y][boulder2X] = ENTITY_TYPES.BOULDER;
         this.entities.set(`${boulder2X},${boulder2Y}`, boulder2);
         
         // Create dirt for boulder #2 to land on
@@ -194,14 +202,6 @@ class Game {
             }
         });
         
-        // Add a diamond for testing collection (away from the falling boulder)
-        const diamondX = playerX + 5;
-        const diamondY = playerY;
-        if (diamondX < GRID_WIDTH-1) {
-            const diamond = new Diamond(diamondX, diamondY);
-            this.grid[diamondY][diamondX] = ENTITY_TYPES.DIAMOND;
-            this.entities.set(`${diamondX},${diamondY}`, diamond);
-        }
         
         // Update renderer and UI
         if (this.renderer) {
@@ -412,6 +412,108 @@ class Game {
         );
     }
 
+    // New method to handle physics effects
+    processEffects(effects) {
+        for (const effect of effects) {
+            switch (effect.type) {
+                case EFFECT_TYPES.REMOVE:
+                    this.entities.delete(`${effect.x},${effect.y}`);
+                    break;
+                    
+                case EFFECT_TYPES.TRANSFORM:
+                    // Remove old entity
+                    this.entities.delete(`${effect.x},${effect.y}`);
+                    // Create new entity of different type
+                    const newEntity = new effect.newEntityClass(effect.x, effect.y);
+                    this.entities.set(`${effect.x},${effect.y}`, newEntity);
+                    this.grid[effect.y][effect.x] = effect.newType;
+                    break;
+                    
+                case EFFECT_TYPES.CREATE:
+                    const createdEntity = new effect.entityClass(effect.x, effect.y);
+                    this.entities.set(`${effect.x},${effect.y}`, createdEntity);
+                    this.grid[effect.y][effect.x] = effect.entityType;
+                    break;
+                    
+                case EFFECT_TYPES.SOUND:
+                    this.soundManager.playSound(effect.sound);
+                    break;
+            }
+        }
+    }
+
+    // New method to update entities with effects system
+    updateEntitiesWithEffects() {
+        const entitiesToUpdate = [];
+        for (let y = GRID_HEIGHT - 1; y >= 0; y--) {
+            for (let x = GRID_WIDTH - 1; x >= 0; x--) {
+                const entity = this.entities.get(`${x},${y}`);
+                if (entity && typeof entity.update === 'function' && entity !== this.player) {
+                    entitiesToUpdate.push(entity);
+                }
+            }
+        }
+        
+        const allEffects = [];
+        let somethingChanged = false;
+        
+        for (const entity of entitiesToUpdate) {
+            const oldX = entity.x;
+            const oldY = entity.y;
+            
+            const result = entity.update(this.grid);
+            
+            // Handle both old and new return formats
+            let moved, effects;
+            if (result && typeof result === 'object' && 'effects' in result) {
+                // New format: { moved: boolean, effects: [...] }
+                moved = result.moved;
+                effects = result.effects || [];
+            } else {
+                // Old format: boolean (moved) - for backward compatibility
+                moved = result;
+                effects = [];
+                
+                // Convert old-style landing sounds to effects
+                if (typeof entity.getLandingSound === 'function') {
+                    const soundName = entity.getLandingSound();
+                    if (soundName) {
+                        effects.push({
+                            type: EFFECT_TYPES.SOUND,
+                            sound: soundName
+                        });
+                    }
+                }
+            }
+            
+            if (moved) {
+                somethingChanged = true;
+                
+                // Handle position changes
+                if (oldX !== entity.x || oldY !== entity.y) {
+                    this.entities.delete(`${oldX},${oldY}`);
+                    this.entities.set(`${entity.x},${entity.y}`, entity);
+                }
+
+                // Check collision with player
+                if ((entity.type === ENTITY_TYPES.BOULDER || entity.type === ENTITY_TYPES.DIAMOND) && 
+                    this.player && entity.x === this.player.x && entity.y === this.player.y) {
+                    this.soundManager.playSound('die');
+                    this.gameOver(false);
+                    return somethingChanged;
+                }
+            }
+            
+            // Collect all effects to process after all updates
+            allEffects.push(...effects);
+        }
+        
+        // Process all effects after entity updates are complete
+        this.processEffects(allEffects);
+        
+        return somethingChanged;
+    }
+
     tick() {
         if (this.isGameOver) return;
         
@@ -455,47 +557,9 @@ class Game {
                 }
             }
             
-            // Update entities physics
-            const entitiesToUpdate = [];
-            for (let y = GRID_HEIGHT - 1; y >= 0; y--) {
-                for (let x = GRID_WIDTH - 1; x >= 0; x--) {
-                    const entity = this.entities.get(`${x},${y}`);
-                    if (entity && typeof entity.update === 'function' && entity !== this.player) {
-                        entitiesToUpdate.push(entity);
-                    }
-                }
-            }
-            
-            for (const entity of entitiesToUpdate) {
-                const oldX = entity.x;
-                const oldY = entity.y;
-                
-                const changed = entity.update(this.grid);
-                
-                if (changed) {
-                    somethingChanged = true;
-                    
-                    if (oldX !== entity.x || oldY !== entity.y) {
-                        this.entities.delete(`${oldX},${oldY}`);
-                        this.entities.set(`${entity.x},${entity.y}`, entity);
-                    }
-
-                    // Check collision with player
-                    if ((entity.type === ENTITY_TYPES.BOULDER || entity.type === ENTITY_TYPES.DIAMOND) && 
-                        this.player && entity.x === this.player.x && entity.y === this.player.y) {
-                        this.soundManager.playSound('die');
-                        this.gameOver(false);
-                        return;
-                    }
-                }
-                
-                if (typeof entity.getLandingSound === 'function') {
-                    const soundName = entity.getLandingSound();
-                    if (soundName) {
-                        this.soundManager.playSound(soundName);
-                    }
-                }
-            }
+            // Update entities physics using the new effects system
+            const entitiesChanged = this.updateEntitiesWithEffects();
+            if (entitiesChanged) somethingChanged = true;
 
             // Update viewport during physics ticks
             if (this.player && this.renderer) {

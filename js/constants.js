@@ -26,6 +26,7 @@ const SOUND_PATHS = {
     levelComplete: 'sounds/level_complete.wav',
     gameOver: 'sounds/game_over.wav',
     die: 'sounds/die.wav',
+    squash: 'sounds/squash.wav',
 };
 
 // Sprite file paths (unchanged)
@@ -46,7 +47,7 @@ const SPRITE_PATHS = {
     playerd2: 'images/PlayerD2.bmp',
     playerpushl: 'images/PlayerPushL.bmp',
     playerpushr: 'images/PlayerPushR.bmp',
-    exit: 'images/Exit.bmp'
+    exit: 'images/Exit.bmp',
 };
 
 const GAME_SETTINGS = {
