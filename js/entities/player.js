@@ -1,92 +1,122 @@
-// Updated Player class with debug logging
 class Player extends Entity {
     constructor(x, y) {
         super(x, y, ENTITY_TYPES.PLAYER);
-        
-        // Animation properties
-        this.currentDirection = null; // 'up', 'down', 'left', 'right', or null
-        this.animationFrame = 1; // 1 or 2
-        this.baseSprite = 'player'; // Default sprite when not moving
-        this.isPushing = false; // Whether player is pushing a boulder
     }
     
-    // Set movement direction (called when player moves)
-    setMovementDirection(direction, isPushing = false) {
-        this.currentDirection = direction;
-        this.isPushing = isPushing;
-        this.animationFrame = 1; // Start with frame 1
-    }
-    
-    // Clear movement direction (called when player stops)
-    clearMovementDirection() {
-        this.currentDirection = null;
-        this.isPushing = false;
-        this.animationFrame = 1;
-    }
-    
-    // Unified tick method - handles both physics and animation
-    tick(isPhysicsTick) {
-        if (isPhysicsTick) {
-            // PHYSICS TICK: Handle physics-related logic
-            return false; // No visual change needed
-            
-        } else {
-            // ANIMATION TICK: Update animation frame
-            if (this.currentDirection) {
-                // Toggle between frame 1 and 2
-                this.animationFrame = this.animationFrame === 1 ? 2 : 1;
-                return true; // Visual change needed
-            }
-            return false; // No animation, no visual change
-        }
-    }
-    
-    // Get the current sprite name based on animation state
-    getCurrentSprite() {
-        if (!this.currentDirection) {
-            return this.baseSprite;
-        }
-        
-        // If pushing, use static pushing sprites (no animation frames)
-        if (this.isPushing && (this.currentDirection === 'left' || this.currentDirection === 'right')) {
-            const pushSprite = this.currentDirection === 'right' ? 'playerpushr' : 'playerpushl';
-            return pushSprite;
-        }
-        
-        // Return appropriate regular movement sprite name (lowercase to match SPRITE_PATHS)
-        const regularSprite = (() => {
-            switch(this.currentDirection) {
-                case 'right':
-                    return `playerr${this.animationFrame}`;
-                case 'left':
-                    return `playerl${this.animationFrame}`;
-                case 'up':
-                    return `playeru${this.animationFrame}`;
-                case 'down':
-                    return `playerd${this.animationFrame}`;
-                default:
-                    return this.baseSprite;
-            }
-        })();
-        
-        return regularSprite;
+    update(grid) {
+        // Player is controlled by user input, not by automatic updates
+        return false;
     }
     
     draw(ctx, x, y, tileSize = TILE_SIZE) {
-        const spriteName = this.getCurrentSprite();
-        
-        // Try to use the animated sprite
-        if (window.spriteManager && window.spriteManager.getSprite(spriteName)) {
-            ctx.drawImage(window.spriteManager.getSprite(spriteName), x, y, tileSize, tileSize);
-        } 
-        // Fallback to base sprite if animated sprite not found
-        else if (window.spriteManager && window.spriteManager.getSprite(this.baseSprite)) {
-            ctx.drawImage(window.spriteManager.getSprite(this.baseSprite), x, y, tileSize, tileSize);
-        }
-        // Final fallback to simple rectangle
-        else {
+        // Use the sprite if available
+        if (window.spriteManager && window.spriteManager.getSprite('player')) {
+            ctx.drawImage(
+                window.spriteManager.getSprite('player'), 
+                x, y, 
+                tileSize, tileSize
+            );
+        } else {
+            // Fallback to drawing a rectangle with smaller margins
             ctx.fillStyle = '#FF0000';
-            ctx.fillRect(x + 2, y + 2, tileSize - 4, tileSize - 4);
+            ctx.fillRect(x, y, tileSize, tileSize);
         }
     }
+    
+    tryMove(grid, dx, dy, soundManager, game) {
+        const newX = this.x + dx;
+        const newY = this.y + dy;
+        
+        // Check bounds
+        if (!Entity.isInBounds(newX, newY)) {
+            return false;
+        }
+        
+        const destType = grid[newY][newX];
+        
+        // Check destination type
+        if (destType === ENTITY_TYPES.WALL) {
+            return false;
+        }
+        
+        if (destType === ENTITY_TYPES.BOULDER) {
+            // Check if boulder can be pushed
+            const pushDestX = newX + dx;
+            
+            // Can only push if:
+            // 1. The destination is in bounds
+            // 2. The destination is empty (not a wall, not another boulder, etc.)
+            if (Entity.isInBounds(pushDestX, newY) && grid[newY][pushDestX] === ENTITY_TYPES.EMPTY) {
+                // Move the boulder
+                grid[newY][pushDestX] = ENTITY_TYPES.BOULDER;
+                grid[newY][newX] = ENTITY_TYPES.EMPTY;
+                soundManager.playSound('boulder');
+                
+                // Now move the player
+                grid[this.y][this.x] = ENTITY_TYPES.EMPTY;
+                this.x = newX;
+                this.y = newY;
+                grid[this.y][this.x] = this.type;
+                
+                // Update entity instances in level manager to reflect the pushed boulder
+                game.levelManager.updateEntityPosition(ENTITY_TYPES.BOULDER, newX, newY, pushDestX, newY);
+                
+                // Force immediate entity sync to avoid visual glitches
+                game.syncEntitiesWithGrid();
+                
+                // Force immediate viewport update
+                this.updateViewport(game);
+                
+                return true;
+            }
+            // If cannot push the boulder, the move is invalid
+            return false;
+        }
+        
+        // Play appropriate sound based on destination
+        if (destType === ENTITY_TYPES.EMPTY) {
+            soundManager.playSound('move');
+        } else if (destType === ENTITY_TYPES.DIRT) {
+            soundManager.playSound('dig');
+        } else if (destType === ENTITY_TYPES.DIAMOND) {
+            soundManager.playSound('diamond');
+            
+            // Collect diamond and allow movement
+            game.collectDiamond();
+            
+            // Remove the diamond from the grid and entity list
+            grid[newY][newX] = ENTITY_TYPES.EMPTY;
+            game.levelManager.removeEntityAtPosition(newX, newY);
+        } else if (destType === ENTITY_TYPES.EXIT) {
+            soundManager.playSound('levelComplete');
+            game.levelComplete();
+            return true;
+        }
+        
+        // Update grid - this is the source of truth
+        grid[this.y][this.x] = ENTITY_TYPES.EMPTY;
+        this.x = newX;
+        this.y = newY;
+        grid[this.y][this.x] = this.type;
+        
+        // Force immediate entity sync to avoid visual glitches
+        game.syncEntitiesWithGrid();
+        
+        // Force immediate viewport update to maintain player centering
+        this.updateViewport(game);
+        
+        return true;
+    }
+    
+    // Helper method for viewport updates to avoid code duplication
+    // Update the viewport update method to always center on player
+    updateViewport(game) {
+        if (game.renderer) {
+            // Always center the viewport on the player
+            game.renderer.centerViewportOnPlayer();
+        
+            // Force redraw
+            game.renderer.drawGame();
+    }
+}
 }

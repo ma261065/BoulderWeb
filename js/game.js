@@ -427,6 +427,16 @@ getDirectionName(deltaX, deltaY) {
         }
     }
 
+    collectDiamond() {
+        this.diamondsCollected++;
+        this.renderer.updateUI(
+            this.levelManager.getCurrentLevel(),
+            this.diamondsCollected,
+            this.diamondsNeeded,
+            this.timeLeft
+        );
+    }
+
     tick() {
         if (this.isGameOver) return;
         
