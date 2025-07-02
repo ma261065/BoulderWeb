@@ -1,6 +1,6 @@
 /**
- * Simplified HybridInputManager
- * Let the game loop handle timing, input manager just captures input
+ * Simplified HybridInputManager with Input Queuing
+ * Captures all key taps in a queue + handles continuous held keys
  */
 class HybridInputManager {
     constructor(gameInstance) {
@@ -8,7 +8,10 @@ class HybridInputManager {
         this.gameElement = document.getElementById('gameCanvas') || document.body;
         this.isActive = true;
         
-        // Current input state (checked by game loop)
+        // Input queuing system for discrete taps
+        this.inputQueue = [];
+        
+        // Current input state for continuous movement (checked by game loop)
         this.currentKey = null;
         this.currentMouseDirection = null;
         this.isMouseDown = false;
@@ -45,7 +48,7 @@ class HybridInputManager {
         this.setupEventListeners();
         this.showControls();
         
-        console.log(`Simplified Input Manager initialized for ${this.isTouchDevice ? 'touch' : 'desktop'} device`);
+        console.log(`Queued Input Manager initialized for ${this.isTouchDevice ? 'touch' : 'desktop'} device`);
     }
 
     detectTouchDevice() {
@@ -67,7 +70,7 @@ class HybridInputManager {
     }
 
     setupEventListeners() {
-        // Keyboard - just track current key, no repeats
+        // Keyboard - queue discrete presses AND track held keys
         document.addEventListener('keydown', this.handleKeyDown.bind(this));
         document.addEventListener('keyup', this.handleKeyUp.bind(this));
         
@@ -88,20 +91,29 @@ class HybridInputManager {
             this.currentKey = null;
             this.currentMouseDirection = null;
             this.isMouseDown = false;
+            this.inputQueue = []; // Clear queue on focus loss
         });
         
         this.gameElement.focus();
     }
 
-    // FIXED: Only set currentKey for continuous movement, let game loop handle timing
+    // ENHANCED: Queue discrete key presses AND set for continuous movement
     handleKeyDown(event) {
         if (!this.isActive) return;
         
         const direction = this.KEY_CODES[event.keyCode];
         if (direction) {
             event.preventDefault();
+            
+            // Only queue if this is a NEW key press (not a repeat)
+            if (this.currentKey !== direction) {
+                // Queue the input for immediate processing (handles quick taps)
+                this.inputQueue.push(direction);
+                console.log(`Key queued: ${direction.name}, queue length: ${this.inputQueue.length}`);
+            }
+            
+            // Always set current key for continuous movement (handles held keys)
             this.currentKey = direction;
-            // Don't send immediate move - let game loop handle all keyboard movement
         }
     }
 
@@ -138,7 +150,8 @@ class HybridInputManager {
             
             if (distance >= this.minSwipeDistance) {
                 const direction = this.getSwipeDirection(deltaX, deltaY);
-                this.sendMove(direction);
+                // Queue touch input as well
+                this.inputQueue.push(direction);
             }
         }
     }
@@ -191,6 +204,21 @@ class HybridInputManager {
         }
     }
 
+    // NEW: Get next queued input (called by game loop)
+    getNextQueuedInput() {
+        return this.inputQueue.shift(); // Returns undefined if queue is empty
+    }
+
+    // NEW: Check if there are queued inputs
+    hasQueuedInputs() {
+        return this.inputQueue.length > 0;
+    }
+
+    // NEW: Clear the input queue
+    clearQueue() {
+        this.inputQueue = [];
+    }
+
     // SIMPLIFIED: Just send move to game
     sendMove(direction) {
         if (!this.game || !this.isActive || !direction) return;
@@ -232,8 +260,8 @@ class HybridInputManager {
         }
         
         const controlText = this.isTouchDevice 
-            ? '📱 TOUCH CONTROLS<br>Tap and swipe to move<br>👆👇👈👉'
-            : '⌨️ KEYBOARD CONTROLS<br>Arrow Keys or WASD<br>🖱️ Mouse drag also works';
+            ? '📱 TOUCH CONTROLS<br>Tap and swipe to move<br>👆👇👈👉<br><small>⚡ Enhanced responsiveness</small>'
+            : '⌨️ KEYBOARD CONTROLS<br>Arrow Keys or WASD<br>🖱️ Mouse drag also works<br><small>⚡ Enhanced responsiveness</small>';
         
         controlsInfo.innerHTML = controlText;
         
@@ -257,6 +285,7 @@ class HybridInputManager {
         this.currentKey = null;
         this.currentMouseDirection = null;
         this.isMouseDown = false;
+        this.inputQueue = [];
     }
 
     getCurrentDirection() {
@@ -280,6 +309,6 @@ class HybridInputManager {
         
         document.getElementById('controls-info')?.remove();
         
-        console.log('Input manager destroyed');
+        console.log('Queued input manager destroyed');
     }
 }

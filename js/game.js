@@ -89,7 +89,7 @@ class Game {
     }
 
     // SIMPLIFIED: Create level and build simple entity map
-    createLevel(levelNum) {
+    createLevelx(levelNum) {
         // Use existing level manager to get grid and entities
         const levelData = this.levelManager.createLevel(levelNum);
         this.grid = levelData.grid; // Keep existing ENTITY_TYPES grid
@@ -109,10 +109,118 @@ class Game {
         }
     }
 
+    // SIMPLIFIED: Create level and build simple entity map
+    createLevel(levelNum) {
+        console.log("Creating boulder fall test level...");
+        
+        // Clear entities
+        this.entities.clear();
+        
+        // Create a simple test grid
+        this.grid = [];
+        for (let y = 0; y < GRID_HEIGHT; y++) {
+            this.grid[y] = [];
+            for (let x = 0; x < GRID_WIDTH; x++) {
+                this.grid[y][x] = ENTITY_TYPES.EMPTY;
+            }
+        }
+        
+        // Add walls around the border
+        for (let x = 0; x < GRID_WIDTH; x++) {
+            this.grid[0][x] = ENTITY_TYPES.WALL; // Top wall
+            this.grid[GRID_HEIGHT-1][x] = ENTITY_TYPES.WALL; // Bottom wall
+        }
+        for (let y = 0; y < GRID_HEIGHT; y++) {
+            this.grid[y][0] = ENTITY_TYPES.WALL; // Left wall
+            this.grid[y][GRID_WIDTH-1] = ENTITY_TYPES.WALL; // Right wall
+        }
+        
+        // Position player to the side and one level below boulder
+        const playerX = Math.floor(GRID_WIDTH / 2) + 3; 
+        const playerY = GRID_HEIGHT - 6; 
+        
+        // Position boulder #1 on a dirt platform (stationary)
+        const boulderX = Math.floor(GRID_WIDTH / 2);
+        const boulderY = playerY - 2; // Boulder 2 levels above player
+        const platformY = boulderY + 1; // Dirt platform 1 level above player
+        
+        // Position boulder #2 (falling boulder) - to the right
+        const boulder2X = boulderX + 4;  // 4 spaces to the right
+        const boulder2Y = playerY - 10;  // 10 spaces above player level
+        const landingDirtY = playerY - 1; // Where boulder #2 will land
+                
+        // Create and place player
+        this.player = new Player(playerX, playerY);
+        this.grid[playerY][playerX] = ENTITY_TYPES.PLAYER;
+        this.entities.set(`${playerX},${playerY}`, this.player);
+        
+        // Create and place boulder #1 (stationary, never fallen)
+        const boulder1 = new Boulder(boulderX, boulderY);
+        this.grid[boulderY][boulderX] = ENTITY_TYPES.BOULDER;
+        this.entities.set(`${boulderX},${boulderY}`, boulder1);
+        
+        // Create dirt platform supporting boulder #1
+        const supportDirt = new Dirt(boulderX, platformY);
+        this.grid[platformY][boulderX] = ENTITY_TYPES.DIRT;
+        this.entities.set(`${boulderX},${platformY}`, supportDirt);
+        
+        // Create and place boulder #2 (falling boulder) - to the right of player path
+        const boulder2 = new Diamond(boulder2X, boulder2Y);
+        this.grid[boulder2Y][boulder2X] = ENTITY_TYPES.DIAMOND;
+        this.entities.set(`${boulder2X},${boulder2Y}`, boulder2);
+        
+        // Create dirt for boulder #2 to land on
+        const landingDirt = new Dirt(boulder2X, landingDirtY);
+        this.grid[landingDirtY][boulder2X] = ENTITY_TYPES.DIRT;
+        this.entities.set(`${boulder2X},${landingDirtY}`, landingDirt);
+        
+        // IMPORTANT: Spaces at (boulderX, playerY) and (boulder2X, playerY) left EMPTY for player to walk under boulders
+        
+        // Add a few dirt blocks for visual reference
+        const dirtPositions = [
+            {x: playerX - 3, y: playerY},
+            {x: playerX + 3, y: playerY},
+            {x: playerX - 2, y: playerY + 1},
+            {x: playerX + 2, y: playerY + 1},
+            {x: playerX - 1, y: playerY + 2},
+            {x: playerX + 1, y: playerY + 2}
+        ];
+        
+        dirtPositions.forEach(pos => {
+            if (pos.x > 0 && pos.x < GRID_WIDTH-1 && pos.y > 0 && pos.y < GRID_HEIGHT-1) {
+                const dirt = new Dirt(pos.x, pos.y);
+                this.grid[pos.y][pos.x] = ENTITY_TYPES.DIRT;
+                this.entities.set(`${pos.x},${pos.y}`, dirt);
+            }
+        });
+        
+        // Add a diamond for testing collection (away from the falling boulder)
+        const diamondX = playerX + 5;
+        const diamondY = playerY;
+        if (diamondX < GRID_WIDTH-1) {
+            const diamond = new Diamond(diamondX, diamondY);
+            this.grid[diamondY][diamondX] = ENTITY_TYPES.DIAMOND;
+            this.entities.set(`${diamondX},${diamondY}`, diamond);
+        }
+        
+        // Update renderer and UI
+        if (this.renderer) {
+            this.renderer.updateUI(
+                this.levelManager ? this.levelManager.getCurrentLevel() : 1,
+                this.diamondsCollected || 0,
+                this.diamondsNeeded || 1,
+                this.timeLeft || 60
+            );
+            this.renderer.centerViewportOnPlayer();
+            this.renderer.drawGame();
+        }
+    }
+
     movePlayer(deltaX, deltaY) {
         if (!this.player || this.isGameOver || !this.isValidMove(deltaX, deltaY)) {
             return false;
         }
+        
         // Process movement immediately
         return this.processPlayerMove(deltaX, deltaY);
     }
@@ -134,8 +242,9 @@ class Game {
     }
 
     isValidMove(deltaX, deltaY) {
-        return Math.abs(deltaX) <= 1 && Math.abs(deltaY) <= 1 && 
+        const isValid = Math.abs(deltaX) <= 1 && Math.abs(deltaY) <= 1 && 
                (Math.abs(deltaX) + Math.abs(deltaY)) === 1;
+        return isValid;
     }
 
     // SIMPLIFIED: Process player move with existing grid format
@@ -247,17 +356,32 @@ class Game {
             }
         }
         
+        // Can't move into walls, boulders, etc. (just block movement, no death)
+        return false;
+        
         return false;
     }
 
-    // MASSIVELY SIMPLIFIED GAME LOOP!
     tick() {
         if (this.isGameOver) return;
         
         let somethingChanged = false;
         
-        // Handle continuous held input (keyboard and mouse)
+        // PRIORITY: Process queued discrete inputs first (for responsive taps)
+        let processedQueuedInput = false;
         if (this.inputManager) {
+            while (this.inputManager.hasQueuedInputs && this.inputManager.hasQueuedInputs()) {
+                const queuedInput = this.inputManager.getNextQueuedInput();
+                if (queuedInput) {
+                    const moved = this.processPlayerMove(queuedInput.x, queuedInput.y);
+                    if (moved) somethingChanged = true;
+                    processedQueuedInput = true;
+                }
+            }
+        }
+        
+        // Handle continuous held input ONLY if no queued inputs were processed
+        if (this.inputManager && !processedQueuedInput) {
             // Check for held keyboard key
             const heldKey = this.inputManager.currentKey;
             if (heldKey) {
@@ -299,10 +423,13 @@ class Game {
                     this.entities.delete(`${oldX},${oldY}`);
                     this.entities.set(`${entity.x},${entity.y}`, entity);
                 }
-                
-                // Check if falling object hits player
-                if (entity.falling && this.player && 
-                    entity.x === this.player.x && entity.y === this.player.y) {
+                if (entity.type === ENTITY_TYPES.BOULDER) {
+                }
+
+                // Check if moving boulder/diamond hits player
+                if ((entity.type === ENTITY_TYPES.BOULDER || entity.type === ENTITY_TYPES.DIAMOND) && 
+                    this.player && entity.x === this.player.x && entity.y === this.player.y) {
+                    this.soundManager.playSound('die');
                     this.gameOver(false);
                     return;
                 }
@@ -478,6 +605,7 @@ class Game {
         );
         
         if (this.timeLeft <= 0) {
+            this.soundManager.playSound('die');
             this.gameOver(false);
         }
     }

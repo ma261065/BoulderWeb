@@ -3,6 +3,7 @@ class Diamond extends Entity {
         super(x, y, ENTITY_TYPES.DIAMOND);
         this.falling = false;
         this.justLanded = false;
+        this.fallStarted = false; // Track if this diamond has started falling
     }
     
     update(grid) {
@@ -14,25 +15,41 @@ class Diamond extends Entity {
         let moved = false;
         
         // Check if we can fall straight down - ONE TILE MOVEMENT ONLY
-        if (Entity.isInBounds(this.x, this.y + 1) && 
-            grid[this.y + 1][this.x] === ENTITY_TYPES.EMPTY) {
+        if (Entity.isInBounds(this.x, this.y + 1)) {
+            const belowType = grid[this.y + 1][this.x];
             
-            // Mark the current position as empty
-            grid[this.y][this.x] = ENTITY_TYPES.EMPTY;
+            // Determine if we can fall
+            let canFall = false;
             
-            // Move down ONE tile
-            this.y++;
+            if (belowType === ENTITY_TYPES.EMPTY) {
+                // Always fall into empty space
+                canFall = true;
+            } else if (belowType === ENTITY_TYPES.PLAYER) {
+                // Only fall into player space if we were already falling
+                // This prevents "instant death" when player moves under stationary diamond
+                canFall = this.fallStarted;
+            }
             
-            // Update the new position on the grid
-            grid[this.y][this.x] = this.type;
-            
-            this.falling = true;
-            moved = true;
+            if (canFall) {
+                // Mark the current position as empty
+                grid[this.y][this.x] = ENTITY_TYPES.EMPTY;
+                
+                // Move down ONE tile
+                this.y++;
+                
+                // Update the new position on the grid
+                grid[this.y][this.x] = this.type;
+                
+                this.falling = true;
+                this.fallStarted = true; // Mark that this diamond has started falling
+                moved = true;
+            }
         }
-        // Check if we can roll off something (boulder or diamond) - ONE TILE MOVEMENT ONLY
-        else if (Entity.isInBounds(this.x, this.y + 1) && 
-                (grid[this.y + 1][this.x] === ENTITY_TYPES.BOULDER || 
-                 grid[this.y + 1][this.x] === ENTITY_TYPES.DIAMOND)) {
+        
+        // If we can't fall, check if we can roll off something (boulder or diamond)
+        if (!moved && Entity.isInBounds(this.x, this.y + 1) && 
+            (grid[this.y + 1][this.x] === ENTITY_TYPES.BOULDER || 
+             grid[this.y + 1][this.x] === ENTITY_TYPES.DIAMOND)) {
             
             // Try rolling left first
             if (Entity.isInBounds(this.x - 1, this.y) && 
@@ -49,6 +66,7 @@ class Diamond extends Entity {
                 // Update the new position on the grid
                 grid[this.y][this.x] = this.type;
                 
+                this.fallStarted = true; // Rolling also counts as starting to fall
                 moved = true;
             }
             // Try rolling right
@@ -66,7 +84,20 @@ class Diamond extends Entity {
                 // Update the new position on the grid
                 grid[this.y][this.x] = this.type;
                 
+                this.fallStarted = true; // Rolling also counts as starting to fall
                 moved = true;
+            }
+        }
+        
+        // IMPORTANT: Reset fallStarted if diamond is now resting on solid support
+        if (!moved && Entity.isInBounds(this.x, this.y + 1)) {
+            const belowType = grid[this.y + 1][this.x];
+            if (belowType === ENTITY_TYPES.WALL || 
+                belowType === ENTITY_TYPES.DIRT || 
+                belowType === ENTITY_TYPES.BOULDER || 
+                belowType === ENTITY_TYPES.DIAMOND) {
+                // Diamond is supported by something solid - reset fallStarted
+                this.fallStarted = false;
             }
         }
         
