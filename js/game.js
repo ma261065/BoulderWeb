@@ -247,7 +247,26 @@ class Game {
         return isValid;
     }
 
-    // SIMPLIFIED: Process player move with existing grid format
+    // Add this helper method to your Game class
+    getDirectionName(deltaX, deltaY) {
+    if (deltaX > 0) return 'right';
+    if (deltaX < 0) return 'left';
+    if (deltaY > 0) return 'down';
+    if (deltaY < 0) return 'up';
+    return null;
+}
+
+    // Updated processPlayerMove method (showing the key sections that need animation triggers)
+    // Add this helper method to your Game class
+getDirectionName(deltaX, deltaY) {
+    if (deltaX > 0) return 'right';
+    if (deltaX < 0) return 'left';
+    if (deltaY > 0) return 'down';
+    if (deltaY < 0) return 'up';
+    return null;
+}
+
+    // Process the player's movement based on input
     processPlayerMove(deltaX, deltaY) {
         if (!this.player) return false;
         
@@ -260,6 +279,7 @@ class Game {
         }
         
         const targetType = this.grid[newY][newX];
+        const direction = this.getDirectionName(deltaX, deltaY);
         
         // Handle different target types
         if (targetType === ENTITY_TYPES.EMPTY) {
@@ -272,6 +292,10 @@ class Game {
             
             this.grid[newY][newX] = ENTITY_TYPES.PLAYER;
             this.entities.set(`${newX},${newY}`, this.player);
+            
+            // Set movement direction for animation
+            this.player.setMovementDirection(direction);
+            
             this.soundManager.playSound('move');
             return true;
             
@@ -279,13 +303,17 @@ class Game {
             // Dig through dirt
             this.grid[this.player.y][this.player.x] = ENTITY_TYPES.EMPTY;
             this.entities.delete(`${this.player.x},${this.player.y}`);
-            this.entities.delete(`${newX},${newY}`); // Remove dirt entity
+            this.entities.delete(`${newX},${newY}`);
             
             this.player.x = newX;
             this.player.y = newY;
             
             this.grid[newY][newX] = ENTITY_TYPES.PLAYER;
             this.entities.set(`${newX},${newY}`, this.player);
+            
+            // Set movement direction for animation
+            this.player.setMovementDirection(direction);
+            
             this.soundManager.playSound('dig');
             return true;
             
@@ -293,13 +321,17 @@ class Game {
             // Collect diamond
             this.grid[this.player.y][this.player.x] = ENTITY_TYPES.EMPTY;
             this.entities.delete(`${this.player.x},${this.player.y}`);
-            this.entities.delete(`${newX},${newY}`); // Remove diamond entity
+            this.entities.delete(`${newX},${newY}`);
             
             this.player.x = newX;
             this.player.y = newY;
             
             this.grid[newY][newX] = ENTITY_TYPES.PLAYER;
             this.entities.set(`${newX},${newY}`, this.player);
+            
+            // Set movement direction for animation
+            this.player.setMovementDirection(direction);
+            
             this.collectDiamond();
             this.soundManager.playSound('diamond');
             return true;
@@ -314,12 +346,16 @@ class Game {
             
             this.grid[newY][newX] = ENTITY_TYPES.PLAYER;
             this.entities.set(`${newX},${newY}`, this.player);
+            
+            // Set movement direction for animation
+            this.player.setMovementDirection(direction);
+            
             this.levelComplete();
             return true;
         }
         
         // Try pushing boulders (only horizontally)
-        if (targetType === ENTITY_TYPES.BOULDER && deltaY === 0) { // Only allow horizontal pushes
+        else if (targetType === ENTITY_TYPES.BOULDER && deltaY === 0) {
             const pushX = newX + deltaX;
             const pushY = newY + deltaY;
             
@@ -327,8 +363,8 @@ class Game {
                 pushY >= 0 && pushY < GRID_HEIGHT && 
                 this.grid[pushY][pushX] === ENTITY_TYPES.EMPTY) {
                 
-                // Get boulder entity
                 const boulder = this.entities.get(`${newX},${newY}`);
+                
                 if (boulder) {
                     // Move boulder
                     this.grid[newY][newX] = ENTITY_TYPES.EMPTY;
@@ -350,159 +386,181 @@ class Game {
                     this.grid[newY][newX] = ENTITY_TYPES.PLAYER;
                     this.entities.set(`${newX},${newY}`, this.player);
                     
+                    // Set movement direction for PUSHING animation
+                    this.player.setMovementDirection(direction, true); // true = isPushing
+                    
                     this.soundManager.playSound('push');
                     return true;
                 }
             }
         }
         
-        // Can't move into walls, boulders, etc. (just block movement, no death)
-        return false;
-        
+        // Can't move - no animation needed
         return false;
     }
-        
+
+    // Add this method to clear player animation when no input is being processed
+    // Call this in your tick() method when no input is active
+    clearPlayerAnimationIfIdle() {
+        // Only clear if no input is currently being processed
+        if (this.inputManager && 
+            !this.inputManager.currentKey && 
+            !this.inputManager.isMouseDown && 
+            (!this.inputManager.hasQueuedInputs || !this.inputManager.hasQueuedInputs())) {
+            
+            if (this.player && this.player.currentDirection) {
+                this.player.clearMovementDirection();
+            }
+        }
+    }
+   
+    clearPlayerAnimationIfIdle() {
+        // Only clear if no input is currently being processed
+        if (this.inputManager && 
+            !this.inputManager.currentKey && 
+            !this.inputManager.isMouseDown && 
+            (!this.inputManager.hasQueuedInputs || !this.inputManager.hasQueuedInputs())) {
+            
+            if (this.player && this.player.currentDirection) {
+                this.player.clearMovementDirection();
+            }
+        }
+    }
+
     tick() {
         if (this.isGameOver) return;
         
+        // Initialize tick counter if not exists
+        if (!this.tickCounter) this.tickCounter = 0;
+        this.tickCounter++;
+        
         let somethingChanged = false;
         
-        // PRIORITY: Process queued discrete inputs first (for responsive taps)
-        let processedQueuedInput = false;
-        if (this.inputManager) {
-            // Only process ONE queued input per tick to maintain proper movement speed
-            if (this.inputManager.hasQueuedInputs && this.inputManager.hasQueuedInputs()) {
-                const queuedInput = this.inputManager.getNextQueuedInput();
-                if (queuedInput) {
-                    console.log(`Tick: Processing queued input: ${queuedInput.name} (${queuedInput.x},${queuedInput.y})`);
-                    const moved = this.processPlayerMove(queuedInput.x, queuedInput.y);
-                    console.log(`Tick: Queued move result: ${moved}`);
+        // Determine tick type: even = physics, odd = animation
+        const isPhysicsTick = (this.tickCounter % 2 === 0);
+        
+        if (isPhysicsTick) {
+            // PHYSICS TICK: Process input, movement, and game logic
+            
+            // PRIORITY: Process queued discrete inputs first (for responsive taps)
+            let processedQueuedInput = false;
+            if (this.inputManager) {
+                if (this.inputManager.hasQueuedInputs && this.inputManager.hasQueuedInputs()) {
+                    const queuedInput = this.inputManager.getNextQueuedInput();
+                    if (queuedInput) {
+                        const moved = this.processPlayerMove(queuedInput.x, queuedInput.y);
+                        if (moved) somethingChanged = true;
+                        processedQueuedInput = true;
+                    }
+                }
+            }
+            
+            // Handle continuous held input ONLY if no queued inputs were processed
+            if (this.inputManager && !processedQueuedInput) {
+                const heldKey = this.inputManager.currentKey;
+                if (heldKey) {
+                    const moved = this.processPlayerMove(heldKey.x, heldKey.y);
                     if (moved) somethingChanged = true;
-                    processedQueuedInput = true;
                 }
-            }
-        }
-        
-        // Handle continuous held input ONLY if no queued inputs were processed
-        if (this.inputManager && !processedQueuedInput) {
-            // Check for held keyboard key
-            const heldKey = this.inputManager.currentKey;
-            if (heldKey) {
-                console.log(`Tick: Processing held key: ${heldKey.name} (${heldKey.x},${heldKey.y})`);
-                const moved = this.processPlayerMove(heldKey.x, heldKey.y);
-                console.log(`Tick: Player move result: ${moved}`);
-                if (moved) somethingChanged = true;
-            }
-            
-            // Check for mouse drag
-            if (this.inputManager.isMouseDown && this.inputManager.currentMouseDirection) {
-                const direction = this.inputManager.currentMouseDirection;
-                console.log(`Tick: Processing mouse direction: ${direction.name}`);
-                const moved = this.processPlayerMove(direction.x, direction.y);
-                if (moved) somethingChanged = true;
-            }
-        }
-        
-        // SIMPLIFIED: Collect entities first, then update (no double processing)
-        const entitiesToUpdate = [];
-        for (let y = GRID_HEIGHT - 1; y >= 0; y--) {
-            for (let x = GRID_WIDTH - 1; x >= 0; x--) {
-                const entity = this.entities.get(`${x},${y}`);
-                if (entity && typeof entity.update === 'function' && entity !== this.player) {
-                    entitiesToUpdate.push(entity);
-                }
-            }
-        }
-        
-        // Update entities (no double processing possible)
-        for (const entity of entitiesToUpdate) {
-            const oldX = entity.x;
-            const oldY = entity.y;
-            
-            const changed = entity.update(this.grid);
-            
-            if (changed) {
-                somethingChanged = true;
                 
-                // Update entity position in our map
-                if (oldX !== entity.x || oldY !== entity.y) {
-                    this.entities.delete(`${oldX},${oldY}`);
-                    this.entities.set(`${entity.x},${entity.y}`, entity);
-                }
-                if (entity.type === ENTITY_TYPES.BOULDER) {
-                    console.log(`After boulder update: Boulder at (${entity.x}, ${entity.y}), Player at (${this.player.x}, ${this.player.y}), Same position: ${entity.x === this.player.x && entity.y === this.player.y}`);
-                }
-
-                // Check if moving boulder/diamond hits player
-                if ((entity.type === ENTITY_TYPES.BOULDER || entity.type === ENTITY_TYPES.DIAMOND) && 
-                    this.player && entity.x === this.player.x && entity.y === this.player.y) {
-                    console.log(`DEATH: ${entity.type === ENTITY_TYPES.BOULDER ? 'Boulder' : 'Diamond'} at (${entity.x},${entity.y}) hit player at (${this.player.x},${this.player.y})`);
-                    console.log(`Entity moved from (${oldX},${oldY}) to (${entity.x},${entity.y})`);
-                    console.log(`Entity was falling: ${entity.falling}, justLanded: ${entity.justLanded}`);
-                    
-                    // Play death sound
-                    this.soundManager.playSound('die');
-                    
-                    this.gameOver(false);
-                    return;
+                if (this.inputManager.isMouseDown && this.inputManager.currentMouseDirection) {
+                    const direction = this.inputManager.currentMouseDirection;
+                    const moved = this.processPlayerMove(direction.x, direction.y);
+                    if (moved) somethingChanged = true;
                 }
             }
             
-            // ALWAYS check for sounds, regardless of movement
-            if (typeof entity.getLandingSound === 'function') {
-                const soundName = entity.getLandingSound();
-                if (soundName) {
-                    this.soundManager.playSound(soundName);
+            // Update entities physics
+            const entitiesToUpdate = [];
+            for (let y = GRID_HEIGHT - 1; y >= 0; y--) {
+                for (let x = GRID_WIDTH - 1; x >= 0; x--) {
+                    const entity = this.entities.get(`${x},${y}`);
+                    if (entity && typeof entity.update === 'function' && entity !== this.player) {
+                        entitiesToUpdate.push(entity);
+                    }
                 }
             }
-        }
-
-        // Update viewport
-        if (this.player && this.renderer) {
-            const viewportChanged = this.renderer.updateViewportPosition();
-            somethingChanged = somethingChanged || viewportChanged;
-        }
             
-        // Check if exit should appear
-        if (!this.hasExitAppeared && this.diamondsCollected >= this.diamondsNeeded) {
-            this.createExit();
-            this.hasExitAppeared = true;
-            somethingChanged = true;
+            for (const entity of entitiesToUpdate) {
+                const oldX = entity.x;
+                const oldY = entity.y;
+                
+                const changed = entity.update(this.grid);
+                
+                if (changed) {
+                    somethingChanged = true;
+                    
+                    if (oldX !== entity.x || oldY !== entity.y) {
+                        this.entities.delete(`${oldX},${oldY}`);
+                        this.entities.set(`${entity.x},${entity.y}`, entity);
+                    }
+
+                    // Check collision with player
+                    if ((entity.type === ENTITY_TYPES.BOULDER || entity.type === ENTITY_TYPES.DIAMOND) && 
+                        this.player && entity.x === this.player.x && entity.y === this.player.y) {
+                        this.soundManager.playSound('die');
+                        this.gameOver(false);
+                        return;
+                    }
+                }
+                
+                if (typeof entity.getLandingSound === 'function') {
+                    const soundName = entity.getLandingSound();
+                    if (soundName) {
+                        this.soundManager.playSound(soundName);
+                    }
+                }
+            }
+
+            // Update viewport during physics ticks
+            if (this.player && this.renderer) {
+                const viewportChanged = this.renderer.updateViewportPosition();
+                somethingChanged = somethingChanged || viewportChanged;
+            }
+                
+            // Check if exit should appear
+            if (!this.hasExitAppeared && this.diamondsCollected >= this.diamondsNeeded) {
+                this.createExit();
+                this.hasExitAppeared = true;
+                somethingChanged = true;
+            }
+
+            // Clear player animation if no input is active
+            this.clearPlayerAnimationIfIdle();
+
+            // Update player physics during physics ticks
+            if (this.player && typeof this.player.tick === 'function') {
+                const playerChanged = this.player.tick(true); // Pass true for physics tick
+                if (playerChanged) somethingChanged = true;
+            }
+
+            // Update player physics during physics ticks
+            if (this.player && typeof this.player.tick === 'function') {
+                const playerChanged = this.player.tick(true); // Pass true for physics tick
+                if (playerChanged) somethingChanged = true;
+            }
+        } else {
+            // ANIMATION TICK: Update all entity animations (including player)
+            
+            // Update player animation during animation ticks
+            if (this.player && typeof this.player.tick === 'function') {
+                const playerChanged = this.player.tick(false); // Pass false for animation tick
+                if (playerChanged) somethingChanged = true;
+            }
+            
+            // Update other entity animations here when needed
+            for (const entity of this.entities.values()) {
+                if (entity !== this.player && typeof entity.tick === 'function') {
+                    const entityChanged = entity.tick(false); // Pass false for animation tick
+                    if (entityChanged) somethingChanged = true;
+                }
+            }
         }
         
         // Redraw if something changed
         if (somethingChanged) {
             this.renderer.drawGame();
         }
-    }
-
-    // SIMPLIFIED: Create exit directly in grid
-    createExit() {
-        // Find a suitable spot for the exit (simple version)
-        for (let y = 1; y < GRID_HEIGHT - 1; y++) {
-            for (let x = 1; x < GRID_WIDTH - 1; x++) {
-                if (this.grid[y][x] === ENTITY_TYPES.DIRT) {
-                    // Remove dirt entity
-                    this.entities.delete(`${x},${y}`);
-                    
-                    // Create and place exit
-                    const exit = new Exit(x, y);
-                    this.grid[y][x] = ENTITY_TYPES.EXIT;
-                    this.entities.set(`${x},${y}`, exit);
-                    return;
-                }
-            }
-        }
-    }
-
-    collectDiamond() {
-        this.diamondsCollected++;
-        this.renderer.updateUI(
-            this.levelManager.getCurrentLevel(),
-            this.diamondsCollected,
-            this.diamondsNeeded,
-            this.timeLeft
-        );
     }
 
     startNewLevel(level) {
@@ -540,7 +598,6 @@ class Game {
         this.startTimerLoop();
     }
 
-    // Rest of the methods remain the same...
     initializeCursorBehavior() {
         const canvas = document.getElementById('gameCanvas');
         let cursorTimeout;

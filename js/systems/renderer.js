@@ -52,10 +52,6 @@ class Renderer {
             this.centerViewportOnPlayer();
         }
         
-        console.log(`Available space: ${availableWidth}x${availableHeight}`);
-        console.log(`Canvas size: ${this.canvas.width}x${this.canvas.height}`);
-        console.log(`Viewport: ${this.viewport.width}x${this.viewport.height} tiles`);
-        
         // Redraw the game with the new viewport
         this.drawGame();
     }
@@ -198,12 +194,23 @@ class Renderer {
                 // Get tile type from grid
                 const tileType = this.game.grid[gridY][gridX];
                 
+                // Skip empty tiles
+                if (tileType === ENTITY_TYPES.EMPTY) {
+                    continue;
+                }
+                
                 // Calculate drawing position
                 const drawX = x * this.TILE_SIZE + offsetX;
                 const drawY = y * this.TILE_SIZE + offsetY;
                 
-                // Use unified drawing method - skip empty tiles
-                if (tileType !== ENTITY_TYPES.EMPTY) {
+                // NEW: Check if there's a specific entity at this position with a custom draw method
+                const entity = this.game.entities.get(`${gridX},${gridY}`);
+                
+                if (entity && typeof entity.draw === 'function') {
+                    // Use the entity's custom draw method (for animated player, etc.)
+                    entity.draw(this.ctx, drawX, drawY, this.TILE_SIZE);
+                } else {
+                    // Fallback to generic drawing method
                     this.drawEntity(tileType, drawX, drawY);
                 }
             }
