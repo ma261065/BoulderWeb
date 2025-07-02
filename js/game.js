@@ -247,24 +247,13 @@ class Game {
         return isValid;
     }
 
-    // Add this helper method to your Game class
     getDirectionName(deltaX, deltaY) {
-    if (deltaX > 0) return 'right';
-    if (deltaX < 0) return 'left';
-    if (deltaY > 0) return 'down';
-    if (deltaY < 0) return 'up';
-    return null;
-}
-
-    // Updated processPlayerMove method (showing the key sections that need animation triggers)
-    // Add this helper method to your Game class
-getDirectionName(deltaX, deltaY) {
-    if (deltaX > 0) return 'right';
-    if (deltaX < 0) return 'left';
-    if (deltaY > 0) return 'down';
-    if (deltaY < 0) return 'up';
-    return null;
-}
+        if (deltaX > 0) return 'right';
+        if (deltaX < 0) return 'left';
+        if (deltaY > 0) return 'down';
+        if (deltaY < 0) return 'up';
+        return null;
+    }
 
     // Process the player's movement based on input
     processPlayerMove(deltaX, deltaY) {
@@ -410,19 +399,7 @@ getDirectionName(deltaX, deltaY) {
             
             if (this.player && this.player.currentDirection) {
                 this.player.clearMovementDirection();
-            }
-        }
-    }
-   
-    clearPlayerAnimationIfIdle() {
-        // Only clear if no input is currently being processed
-        if (this.inputManager && 
-            !this.inputManager.currentKey && 
-            !this.inputManager.isMouseDown && 
-            (!this.inputManager.hasQueuedInputs || !this.inputManager.hasQueuedInputs())) {
-            
-            if (this.player && this.player.currentDirection) {
-                this.player.clearMovementDirection();
+                this.renderer.drawGame();
             }
         }
     }
@@ -535,16 +512,10 @@ getDirectionName(deltaX, deltaY) {
                 somethingChanged = true;
             }
 
-            // Clear player animation if no input is active
+            // Clear player animation if no input is active (manual override)
             this.clearPlayerAnimationIfIdle();
 
-            // Update player physics during physics ticks
-            if (this.player && typeof this.player.tick === 'function') {
-                const playerChanged = this.player.tick(true); // Pass true for physics tick
-                if (playerChanged) somethingChanged = true;
-            }
-
-            // Update player physics during physics ticks
+            // Update player physics during physics ticks (SINGLE CALL ONLY)
             if (this.player && typeof this.player.tick === 'function') {
                 const playerChanged = this.player.tick(true); // Pass true for physics tick
                 if (playerChanged) somethingChanged = true;
