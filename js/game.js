@@ -361,7 +361,7 @@ class Game {
         
         return false;
     }
-
+        
     tick() {
         if (this.isGameOver) return;
         
@@ -370,10 +370,13 @@ class Game {
         // PRIORITY: Process queued discrete inputs first (for responsive taps)
         let processedQueuedInput = false;
         if (this.inputManager) {
-            while (this.inputManager.hasQueuedInputs && this.inputManager.hasQueuedInputs()) {
+            // Only process ONE queued input per tick to maintain proper movement speed
+            if (this.inputManager.hasQueuedInputs && this.inputManager.hasQueuedInputs()) {
                 const queuedInput = this.inputManager.getNextQueuedInput();
                 if (queuedInput) {
+                    console.log(`Tick: Processing queued input: ${queuedInput.name} (${queuedInput.x},${queuedInput.y})`);
                     const moved = this.processPlayerMove(queuedInput.x, queuedInput.y);
+                    console.log(`Tick: Queued move result: ${moved}`);
                     if (moved) somethingChanged = true;
                     processedQueuedInput = true;
                 }
@@ -385,13 +388,16 @@ class Game {
             // Check for held keyboard key
             const heldKey = this.inputManager.currentKey;
             if (heldKey) {
+                console.log(`Tick: Processing held key: ${heldKey.name} (${heldKey.x},${heldKey.y})`);
                 const moved = this.processPlayerMove(heldKey.x, heldKey.y);
+                console.log(`Tick: Player move result: ${moved}`);
                 if (moved) somethingChanged = true;
             }
             
             // Check for mouse drag
             if (this.inputManager.isMouseDown && this.inputManager.currentMouseDirection) {
                 const direction = this.inputManager.currentMouseDirection;
+                console.log(`Tick: Processing mouse direction: ${direction.name}`);
                 const moved = this.processPlayerMove(direction.x, direction.y);
                 if (moved) somethingChanged = true;
             }
@@ -424,12 +430,19 @@ class Game {
                     this.entities.set(`${entity.x},${entity.y}`, entity);
                 }
                 if (entity.type === ENTITY_TYPES.BOULDER) {
+                    console.log(`After boulder update: Boulder at (${entity.x}, ${entity.y}), Player at (${this.player.x}, ${this.player.y}), Same position: ${entity.x === this.player.x && entity.y === this.player.y}`);
                 }
 
                 // Check if moving boulder/diamond hits player
                 if ((entity.type === ENTITY_TYPES.BOULDER || entity.type === ENTITY_TYPES.DIAMOND) && 
                     this.player && entity.x === this.player.x && entity.y === this.player.y) {
+                    console.log(`DEATH: ${entity.type === ENTITY_TYPES.BOULDER ? 'Boulder' : 'Diamond'} at (${entity.x},${entity.y}) hit player at (${this.player.x},${this.player.y})`);
+                    console.log(`Entity moved from (${oldX},${oldY}) to (${entity.x},${entity.y})`);
+                    console.log(`Entity was falling: ${entity.falling}, justLanded: ${entity.justLanded}`);
+                    
+                    // Play death sound
                     this.soundManager.playSound('die');
+                    
                     this.gameOver(false);
                     return;
                 }

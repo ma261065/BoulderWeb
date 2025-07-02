@@ -107,8 +107,9 @@ class HybridInputManager {
             
             // Only queue if this is a NEW key press (not a repeat)
             if (this.currentKey !== direction) {
-                // Queue the input for immediate processing (handles quick taps)
-                this.inputQueue.push(direction);
+                // For responsive game controls, only keep the most recent input
+                // Clear any existing queue and add the new input
+                this.inputQueue = [direction];
                 console.log(`Key queued: ${direction.name}, queue length: ${this.inputQueue.length}`);
             }
             
@@ -150,8 +151,8 @@ class HybridInputManager {
             
             if (distance >= this.minSwipeDistance) {
                 const direction = this.getSwipeDirection(deltaX, deltaY);
-                // Queue touch input as well
-                this.inputQueue.push(direction);
+                // Replace queue with most recent swipe (same as keyboard)
+                this.inputQueue = [direction];
             }
         }
     }
