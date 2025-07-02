@@ -89,7 +89,7 @@ class Game {
     }
 
     // SIMPLIFIED: Create level and build simple entity map
-    createLevelx(levelNum) {
+    createLevel(levelNum) {
         // Use existing level manager to get grid and entities
         const levelData = this.levelManager.createLevel(levelNum);
         this.grid = levelData.grid; // Keep existing ENTITY_TYPES grid
@@ -110,7 +110,7 @@ class Game {
     }
 
     // SIMPLIFIED: Create level and build simple entity map
-    createLevel(levelNum) {
+    createLevelx(levelNum) {
         console.log("Creating boulder fall test level...");
         
         // Clear entities
@@ -256,6 +256,8 @@ class Game {
     }
 
     // Process the player's movement based on input
+    // Update your processPlayerMove method to clear animation when movement is blocked:
+
     processPlayerMove(deltaX, deltaY) {
         if (!this.player) return false;
         
@@ -264,6 +266,9 @@ class Game {
         
         // Check bounds
         if (newX < 0 || newX >= GRID_WIDTH || newY < 0 || newY >= GRID_HEIGHT) {
+            // Movement blocked by bounds - clear animation and force redraw
+            this.player.clearMovementDirection();
+            this.renderer.drawGame();
             return false;
         }
         
@@ -282,9 +287,7 @@ class Game {
             this.grid[newY][newX] = ENTITY_TYPES.PLAYER;
             this.entities.set(`${newX},${newY}`, this.player);
             
-            // Set movement direction for animation
             this.player.setMovementDirection(direction);
-            
             this.soundManager.playSound('move');
             return true;
             
@@ -300,9 +303,7 @@ class Game {
             this.grid[newY][newX] = ENTITY_TYPES.PLAYER;
             this.entities.set(`${newX},${newY}`, this.player);
             
-            // Set movement direction for animation
             this.player.setMovementDirection(direction);
-            
             this.soundManager.playSound('dig');
             return true;
             
@@ -318,9 +319,7 @@ class Game {
             this.grid[newY][newX] = ENTITY_TYPES.PLAYER;
             this.entities.set(`${newX},${newY}`, this.player);
             
-            // Set movement direction for animation
             this.player.setMovementDirection(direction);
-            
             this.collectDiamond();
             this.soundManager.playSound('diamond');
             return true;
@@ -336,9 +335,7 @@ class Game {
             this.grid[newY][newX] = ENTITY_TYPES.PLAYER;
             this.entities.set(`${newX},${newY}`, this.player);
             
-            // Set movement direction for animation
             this.player.setMovementDirection(direction);
-            
             this.levelComplete();
             return true;
         }
@@ -375,16 +372,17 @@ class Game {
                     this.grid[newY][newX] = ENTITY_TYPES.PLAYER;
                     this.entities.set(`${newX},${newY}`, this.player);
                     
-                    // Set movement direction for PUSHING animation
                     this.player.setMovementDirection(direction, true); // true = isPushing
-                    
                     this.soundManager.playSound('push');
                     return true;
                 }
             }
+            // If boulder push failed, fall through to blocked movement
         }
         
-        // Can't move - no animation needed
+        // Movement blocked (wall, unpushable boulder, etc.) - clear animation and force redraw
+        this.player.clearMovementDirection();
+        this.renderer.drawGame();
         return false;
     }
 
