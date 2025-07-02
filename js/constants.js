@@ -2,7 +2,7 @@
 const TILE_SIZE = 32;
 const GRID_WIDTH = 64;
 const GRID_HEIGHT = 32;
-const GAME_VERSION = '250702.1536'; // Version number for the game
+const GAME_VERSION = '250703.0615'; // Version number for the game
 
 // Entity type enum (unchanged)
 const ENTITY_TYPES = {

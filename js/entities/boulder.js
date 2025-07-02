@@ -27,12 +27,11 @@ class Boulder extends Entity {
                 this.fallStarted = true;
                 moved = true;
                 
-            } else if (belowType === ENTITY_TYPES.DIAMOND) {
-                // Squash the diamond and stop (diamond was supported by something solid)
+            } else if (belowType === ENTITY_TYPES.DIAMOND && this.fallStarted) {
+                // Only squash diamond if we were already falling (not just pushed)
                 grid[this.y][this.x] = ENTITY_TYPES.EMPTY;
                 this.y++;
                 grid[this.y][this.x] = this.type;
-                this.fallStarted = true;
                 moved = true;
                 
                 // Add effects for squashing diamond
@@ -128,4 +127,6 @@ class Boulder extends Entity {
             ctx.fill();
         }
     }
+    
+    // Remove the getLandingSound method - sounds are now handled via effects
 }
