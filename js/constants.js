@@ -29,7 +29,7 @@ const SOUND_PATHS = {
     squash: 'sounds/squash.wav',
 };
 
-// Sprite file paths (unchanged)
+// Sprite file paths
 const SPRITE_PATHS = {
     wall: 'images/Wall.bmp',
     dirt: 'images/Dirt.bmp',
@@ -48,6 +48,25 @@ const SPRITE_PATHS = {
     playerpushl: 'images/PlayerPushL.bmp',
     playerpushr: 'images/PlayerPushR.bmp',
     exit: 'images/Exit.bmp',
+    
+    // Scoreboard digits
+    digit_0: 'images/scoreboard/0.bmp',
+    digit_1: 'images/scoreboard/1.bmp',
+    digit_2: 'images/scoreboard/2.bmp',
+    digit_3: 'images/scoreboard/3.bmp',
+    digit_4: 'images/scoreboard/4.bmp',
+    digit_5: 'images/scoreboard/5.bmp',
+    digit_6: 'images/scoreboard/6.bmp',
+    digit_7: 'images/scoreboard/7.bmp',
+    digit_8: 'images/scoreboard/8.bmp',
+    digit_9: 'images/scoreboard/9.bmp',
+    
+    // Scoreboard headers
+    hdr_blank: 'images/scoreboard/HdrBlank.bmp',
+    hdr_diamonds: 'images/scoreboard/HdrDiamonds.bmp',
+    hdr_clock: 'images/scoreboard/HdrClock.bmp',
+    hdr_keys: 'images/scoreboard/HdrKeys.bmp',
+    hdr_mines: 'images/scoreboard/HdrMines.bmp',
 };
 
 const GAME_SETTINGS = {

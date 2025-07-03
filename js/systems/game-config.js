@@ -109,97 +109,89 @@ class GameLogger {
 }
 
 // Asset Preloader
+// Simplified AssetPreloader for Option 2 (all images in SPRITE_PATHS)
 class AssetPreloader {
     constructor(config) {
         this.config = config;
         this.sprites = {};
         this.sounds = {};
-        this.logger = new GameLogger();
     }
 
     async preloadSprites() {
-        const spritePromises = Object.entries(SPRITE_PATHS).map(([name, path]) => 
-            this.loadSprite(name, path)
-        );
-        return Promise.all(spritePromises);
-    }
-
-    async preloadSounds() {
-        const soundPromises = Object.entries(SOUND_PATHS).map(([name, path]) => 
-            this.loadSound(name, path)
-        );
-        return Promise.all(soundPromises);
-    }
-
-    async loadSprite(name, path) {
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.onload = () => {
+        console.log('Preloading sprites...');
+        
+        // Load all sprites (including scoreboard images) from SPRITE_PATHS
+        const spritePromises = Object.entries(SPRITE_PATHS).map(async ([name, path]) => {
+            try {
+                const img = new Image();
+                img.src = path;
+                await new Promise((resolve, reject) => {
+                    img.onload = resolve;
+                    img.onerror = reject;
+                });
                 this.sprites[name] = img;
-                this.logger.info(`Sprite loaded: ${name}`);
-                resolve(img);
-            };
-            img.onerror = (error) => {
-                this.logger.error(`Failed to load sprite: ${name}`, error);
-                
-                // Fallback sprite creation
+                console.log(`Loaded sprite: ${name}`);
+            } catch (error) {
+                console.warn(`Failed to load sprite ${name}: ${error.message}`);
+                // Create a fallback colored rectangle
                 const canvas = document.createElement('canvas');
-                canvas.width = TILE_SIZE;
-                canvas.height = TILE_SIZE;
+                canvas.width = 32;
+                canvas.height = 32;
                 const ctx = canvas.getContext('2d');
                 
-                // Different colors for different entity types
-                let color;
-                switch (name) {
-                    case 'wall': color = '#555'; break;
-                    case 'dirt': color = '#8B4513'; break;
-                    case 'boulder': color = '#AAA'; break;
-                    case 'diamond': color = '#00FFFF'; break;
-                    case 'player': color = '#FF0000'; break;
-                    case 'exit': color = '#00FF00'; break;
-                    default: color = '#FFF';
-                }
-                
-                ctx.fillStyle = color;
-                
-                // Boulders and diamonds are circles, others are rectangles
-                if (name === 'boulder' || name === 'diamond') {
-                    ctx.beginPath();
-                    ctx.arc(TILE_SIZE/2, TILE_SIZE/2, TILE_SIZE/2 - 2, 0, Math.PI * 2);
-                    ctx.fill();
+                if (name.startsWith('digit_')) {
+                    // Draw the digit as text for fallback
+                    ctx.fillStyle = '#00FF00';
+                    ctx.font = '24px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(name.replace('digit_', ''), 16, 24);
+                } else if (name.startsWith('hdr_')) {
+                    // Draw a colored square for headers
+                    ctx.fillStyle = '#00FFFF';
+                    ctx.fillRect(0, 0, 32, 32);
+                    ctx.fillStyle = '#000000';
+                    ctx.font = '8px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(name.replace('hdr_', ''), 16, 18);
                 } else {
-                    ctx.fillRect(1, 1, TILE_SIZE - 2, TILE_SIZE - 2);
+                    // Regular game sprite fallback
+                    ctx.fillStyle = this.getFallbackColor(name);
+                    ctx.fillRect(0, 0, 32, 32);
                 }
                 
                 this.sprites[name] = canvas;
-                resolve(canvas);
-            };
-            img.src = path;
+            }
         });
+
+        await Promise.all(spritePromises);
+        console.log('All sprites loaded:', Object.keys(this.sprites));
     }
 
-    async loadSound(name, path) {
-        return new Promise((resolve, reject) => {
-            const audio = new Audio(path);
-            audio.addEventListener('canplaythrough', () => {
-                this.sounds[name] = audio;
-                this.logger.info(`Sound loaded: ${name}`);
-                resolve(audio);
-            });
-            audio.addEventListener('error', (error) => {
-                this.logger.error(`Failed to load sound: ${name}`, error);
-                reject(error);
-            });
-            audio.load();
-        });
+    async preloadSounds() {
+        console.log('Preloading sounds...');
+        // Your existing sound loading logic here
+        // ...
     }
 
     getSprite(name) {
-        return this.sprites[name];
+        return this.sprites[name] || null;
     }
 
-    getSound(name) {
-        return this.sounds[name];
+    // For scoreboard images, just use the regular sprite method
+    getScoreboardImage(name) {
+        return this.sprites[name] || null;
+    }
+
+    getFallbackColor(name) {
+        const colors = {
+            'wall': '#808080',
+            'dirt': '#8B4513',
+            'boulder': '#696969',
+            'diamond': '#00FFFF',
+            'player': '#FFFF00',
+            'exit': '#00FF00'
+        };
+        return colors[name] || '#FF00FF';
     }
 }
 

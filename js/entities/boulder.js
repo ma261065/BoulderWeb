@@ -127,6 +127,4 @@ class Boulder extends Entity {
             ctx.fill();
         }
     }
-    
-    // Remove the getLandingSound method - sounds are now handled via effects
 }

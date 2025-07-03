@@ -22,6 +22,8 @@ class Game {
         this.diamondsNeeded = this.config.get('levels.baseDiamondsNeeded');
         this.timeLeft = this.config.get('time.initialTime');
         this.pendingPlayerMove = null;
+        this.score = 0; // Initialize score
+        this.minesCount = 0; // Initialize mines count
         
         // Intervals
         this.gameLoopId = null;
@@ -64,6 +66,7 @@ class Game {
             this.timeLeft = this.config.get('time.initialTime');
             this.diamondsNeeded = this.config.get('levels.baseDiamondsNeeded');
             this.isGameOver = false;
+            this.score = 0; // Initialize score
             
             // Update UI
             this.renderer.updateUI(
@@ -147,39 +150,70 @@ class Game {
         const playerX = Math.floor(GRID_WIDTH / 2) + 3; 
         const playerY = GRID_HEIGHT - 6; 
         
+        // Position boulder #1 on a dirt platform (stationary)
+        const boulderX = Math.floor(GRID_WIDTH / 2);
+        const boulderY = playerY - 2; // Boulder 2 levels above player
+        const platformY = boulderY + 1; // Dirt platform 1 level above player
+        
+        // Position boulder #2 (falling boulder) - to the right
+        const boulder2X = boulderX + 4;  // 4 spaces to the right
+        const boulder2Y = playerY - 10;  // 10 spaces above player level
+        const landingDirtY = playerY - 1; // Where boulder #2 will land
+                
         // Create and place player
         this.player = new Player(playerX, playerY);
         this.grid[playerY][playerX] = ENTITY_TYPES.PLAYER;
         this.entities.set(`${playerX},${playerY}`, this.player);
         
-        // Create and place entity #1
-        const e1x = 10;
-        const e1y = 9;
-        const entity1 = new Diamond(e1x, e1y);
-        this.grid[e1y][e1x] = ENTITY_TYPES.DIAMOND;
-        this.entities.set(`${e1x},${e1y}`, entity1);
+        // Create and place boulder #1 (stationary, never fallen)
+        const boulder1 = new Boulder(boulderX, boulderY);
+        this.grid[boulderY][boulderX] = ENTITY_TYPES.BOULDER;
+        this.entities.set(`${boulderX},${boulderY}`, boulder1);
         
-        // Create and place entity #2
-        const e2x = 10;
-        const e2y = 10;
-        const entity2 = new Dirt(e2x, e2y);
-        this.grid[e2y][e2x] = ENTITY_TYPES.DIRT;
-        this.entities.set(`${e2x},${e2y}`, entity2);
+        // Create dirt platform supporting boulder #1
+        const supportDirt = new Dirt(boulderX, platformY);
+        this.grid[platformY][boulderX] = ENTITY_TYPES.DIRT;
+        this.entities.set(`${boulderX},${platformY}`, supportDirt);
         
-        // Create and place entity #3
-        const e3x = 9;
-        const e3y = 8;
-        const entity3 = new Boulder(e3x, e3y);
-        this.grid[e3y][e3x] = ENTITY_TYPES.BOULDER;
-        this.entities.set(`${e3x},${e3y}`, entity3);
+        // Create and place boulder #2 (falling boulder) - to the right of player path
+        const boulder2 = new Diamond(boulder2X, boulder2Y);
+        this.grid[boulder2Y][boulder2X] = ENTITY_TYPES.DIAMOND;
+        this.entities.set(`${boulder2X},${boulder2Y}`, boulder2);
         
-        // Create and place entity #4
-        const e4x = 9;
-        const e4y = 9;
-        const entity4 = new Dirt(e4x, e4y);
-        this.grid[e4y][e4x] = ENTITY_TYPES.DIRT;
-        this.entities.set(`${e4x},${e4y}`, entity4);
-               
+        // Create dirt for boulder #2 to land on
+        const landingDirt = new Dirt(boulder2X, landingDirtY);
+        this.grid[landingDirtY][boulder2X] = ENTITY_TYPES.DIRT;
+        this.entities.set(`${boulder2X},${landingDirtY}`, landingDirt);
+        
+        // IMPORTANT: Spaces at (boulderX, playerY) and (boulder2X, playerY) left EMPTY for player to walk under boulders
+        
+        // Add a few dirt blocks for visual reference
+        const dirtPositions = [
+            {x: playerX - 3, y: playerY},
+            {x: playerX + 3, y: playerY},
+            {x: playerX - 2, y: playerY + 1},
+            {x: playerX + 2, y: playerY + 1},
+            {x: playerX - 1, y: playerY + 2},
+            {x: playerX + 1, y: playerY + 2}
+        ];
+        
+        dirtPositions.forEach(pos => {
+            if (pos.x > 0 && pos.x < GRID_WIDTH-1 && pos.y > 0 && pos.y < GRID_HEIGHT-1) {
+                const dirt = new Dirt(pos.x, pos.y);
+                this.grid[pos.y][pos.x] = ENTITY_TYPES.DIRT;
+                this.entities.set(`${pos.x},${pos.y}`, dirt);
+            }
+        });
+        
+        // Add a diamond for testing collection (away from the falling boulder)
+        const diamondX = playerX + 5;
+        const diamondY = playerY;
+        if (diamondX < GRID_WIDTH-1) {
+            const diamond = new Diamond(diamondX, diamondY);
+            this.grid[diamondY][diamondX] = ENTITY_TYPES.DIAMOND;
+            this.entities.set(`${diamondX},${diamondY}`, diamond);
+        }
+        
         // Update renderer and UI
         if (this.renderer) {
             this.renderer.updateUI(
@@ -381,6 +415,7 @@ class Game {
 
     collectDiamond() {
         this.diamondsCollected++;
+        this.score += 30; // Add 30 points for each diamond collected
         this.renderer.updateUI(
             this.levelManager.getCurrentLevel(),
             this.diamondsCollected,
@@ -599,6 +634,7 @@ class Game {
         this.diamondsNeeded = this.config.get('levels.baseDiamondsNeeded') + 
                             (level * this.config.get('levels.diamondsIncrementPerLevel'));
         this.isGameOver = false;
+        this.score = 0; // Reset score for new level
         
         this.renderer.updateUI(
             this.levelManager.getCurrentLevel(),
@@ -693,6 +729,9 @@ class Game {
             this.diamondsNeeded,
             this.timeLeft
         );
+        
+        // Force a redraw of the entire game when timer updates (to maintain centering)
+        this.renderer.drawGame();
         
         if (this.timeLeft <= 0) {
             this.soundManager.playSound('die');
@@ -808,6 +847,7 @@ class Game {
         this.hasExitAppeared = false;
         this.timeLeft = this.config.get('time.initialTime');
         this.diamondsNeeded = this.config.get('levels.baseDiamondsNeeded');
+        this.score = 0; // Reset score when restarting
         
         if (this.inputManager) {
             this.inputManager.activate();

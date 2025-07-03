@@ -1,0 +1,498 @@
+Introduction
+
+Welcome to Boulder. This game was written for all those fans of the Amiga game Boulderdash, and its predecessors on the Commodore 64, and other early PCs.
+
+The inspiration for this implementation was taken from the Amiga version, and hopefully presents a reasonable approximation of that game.
+
+As well as allowing you to play the game, this version includes a fully integrated level-editor allowing you to create new games, and modify existing ones.
+
+The game will track scores for up to 10 players on a per-game basis.
+
+The game is designed to run on Windows 95 and Windows NT4 and above, however it will also run on NT3.51, albeit with some strange effects.
+
+
+
+
+See also:        Shareware Information
+The Object of the Game
+
+The object of the game is to collect a set number of Diamonds and Emeralds and then complete the level by leaving through the Exit. The game will continue to run after the Man has exited, requiring the use of the ESC key to return to the title screen.
+
+bm0.bmp shows the time limit in which the level must be completed.
+
+bm1.bmp shows the number of Diamonds and Emeralds to be collected.
+
+bm2.bmp shows the number of Mines currently held.
+
+During the game, various Creatures roam the level. Contact with a Bug, Tank, Yum-Yum or Alien will kill the Man, as will being hit by falling objects.
+
+A game can consist of up to 99 levels. A given player can only play up to one level after the highest one which has been completed.
+
+
+
+
+See also:        Tips and Tricks
+         Creatures
+         Moving Around
+         Scoring Points
+
+Moving Around
+
+Five keys are used in Boulder:
+
+Up       Move up
+Down     Move down
+Left     Move left
+Right    Move right
+Ctrl     Grab/Trigger
+
+
+The movement keys control the direction in which the Man travels:
+
+"         The Man can only move through Space, Dirt, Doors to which the Key is held, and the Exit if enough Diamonds and Emeralds have been collected.
+
+"         The Man can pick up Diamonds, Emeralds, Keys and Mines.
+
+"         The Man can push Boulders, Bombs and Nuts, but only into a Space.
+
+
+The Grab/Trigger key serves a dual purpose:
+
+"         In combination with a direction key to grab a Diamond, Emerald, Key, Mine or Dirt from an adjacent position without actually moving to it.
+
+"         To trigger a Mine, by holding the key down for two seconds.
+
+
+
+
+See also:        Tips and Tricks
+         Creatures
+         The Object of the Game
+         Scoring Points
+
+Scoring Points
+
+Boulder keeps track of scores on a per-level and per-game basis for up to 10 players. What this means is that the scores displayed on the title screen will change depending on which game is loaded. The players names are all kept, irrespective of which game is loaded, but if a given player has never played the currently loaded game, the scores for that player will be zero. Removing a player permanently removes all scores for that player, for all games.
+
+
+Points are scored for the following actions:
+
+Picking up an Emerald    10 points
+Picking up a Diamond     30 points
+Destroying a Bug                  50 points
+Destroying a Tank                 50 points
+Destroying an Alien               50 points
+Destroying a Yum-Yum     50 points
+
+
+All scoring stops after the Man has been killed. This means that Creatures which are destroyed after the Man is killed (by coming in contact with Cheese) will not be credited to the score.
+
+
+
+
+See also:        Tips and Tricks
+         Creatures
+         The Object of the Game
+         Moving Around
+
+Entering the level-editor
+
+To edit or design an existing game, or to design an entirely new game, push the Design button on the main Window. If there is already a game loaded, you will be given the choice of entering the level-editor with that game, or of designing an entirely new game. If no game is currently loaded, you will be taken straight to the level-editor.
+
+If the currently loaded game is protected by a password, you will need to supply it to enter the level-editor.
+
+
+
+
+See also:        Tips and Tricks
+         Designing the Level
+         Testing the Level
+         Saving the Level
+
+Designing the level
+
+To design a level, first select a Creature from the toolbox, and then use the mouse to draw your level in the main window. The right mouse button is always set to draw a Space, and can be used to erase mistakes.
+
+"         When drawing the Man or Exit, you will not be able to draw more than one of either in a level. This is by design.
+
+"         The Fill button can be used to fill an area.
+
+The toolbox also lets you set various numeric aspects of a level:
+
+"         Time allowed is the time (in seconds) in which the required number of Diamonds and Emeralds must be collected. The Man will die when the timer reaches zero.
+
+"         Diamonds needed shows the number of Diamonds and Emeralds which must be collected in order for the Exit to open. Bear in mind that a Diamond is worth 3 Emeralds. On earlier levels of the game it is customary to place more Diamonds and Emeralds in the level than are required to open the Exit. On later and harder levels the exact number is usually placed in a level.
+
+"         Magic Wall Time sets the time (in seconds) which the Magic Wall will stay active after being triggered. Note that the Magic Wall can only be triggered once per level.
+
+"         Cheese Growth sets the rate at which Cheese will multiply. The rate can be set between 0 and 100. At a growth rate of 0, the Cheese will never grow, whereas at 100 it will grow rapidly. While each piece of Cheese will grow at this rate, the apparent growth is somewhat exponential, as the more Cheese there is on a level, the more pieces will be growing at a given time.
+
+"         Wheel Time sets the time (in seconds) which the Wheel will continue to spin after being triggered. During the time that the Wheel is spinning, all Aliens will be attracted to the Wheel rather than the Man. Only one Wheel can be spinning at a time, so triggering another Wheel will stop the first one spinning.
+
+
+
+
+See also:        Creatures
+         Adding and Removing Levels
+         Cutting and Pasting
+         Saving the Level
+
+Adding and removing levels
+
+You can use the Insert Level or Delete Level buttons to add or remove levels. A Game can consist of up to 99 levels, and must consist of at least 1 level.
+
+When adding a level, you must choose whether the new level is added before or after the current level. For example, if you want to add a new level at the beginning of the game, move to level 1 (using the level up/down arrows) and choose to insert a new level before this level. Similarly, to add a new level at the end of the game, move to the last level, and choose to insert a new level after this level.
+
+
+
+
+See also:        Tips and Tricks
+         Designing the Level
+         Testing the Level
+         Saving the Level
+
+Cutting and Pasting
+
+The current level can be copied to the clipboard using the Cut or Copy buttons, and then Pasted to other levels. This is useful for making similar levels, or to transfer levels between games when you have two or more instances of Boulder running.
+
+The clipboard format is not compatible with other applications, and Boulder will not read clipboard data from other applications. If the clipboard contains non-Boulder data, then the Paste button will be disabled.
+
+Hint: The Cut button can also be used to clear a level.
+
+
+
+
+See also:        Tips and Tricks
+         Designing the Level
+         Testing the Level
+         Saving the Level
+
+Testing the level
+
+Once a level has been designed the Test button can be used to verify the design. This is identical to using the Play button on the main screen, except that the score is not credited to any player, and pressing ESC will return to the level-editor screen.
+
+
+
+
+See also:        Tips and Tricks
+         Designing the Level
+         Adding and Removing Levels
+         Saving the Level
+
+Saving the level
+
+Once the various levels which make up a game have been designed, the game can be saved. This is done by exiting the level-editor with the Close button. If any changes have been made to the game, you will be prompted to save the game.
+
+The Save As dialog box is always displayed to allow the game to be saved under a different name if desired. If you just want to save the existing game, just click the Save button. If you want to rename the game, or save it in a different location, make the appropriate changes, and then click the Save button.
+
+A game which is re-named will be considered a different game for score-tracking purposes. A game which is moved to a different location will be considered the same game for score tracking purposes.
+
+
+
+
+See also:        Tips and Tricks
+         Designing the Level
+         Adding and Removing Levels
+         Testing the Level
+
+Tips and Tricks
+
+"         Use the Cut button in the level-editor to clear a level.
+
+"         On earlier levels, allow a bit of extra time to complete the level.
+
+"         Cheese can drip into Acid, so that it never grows.
+
+"         There can be a maximum of 99 levels in a game.
+
+"         You can grab an object from an adjacent square by pressing the CTRL key with a direction key.
+
+"         Trigger a Mine by holding the CTRL key for 2 seconds.
+
+"         Right-click on the creatures in the design toolbar for quick help.
+
+"         In the level-editor, the right mouse button is always set to a Space.
+
+"         Set a password in the Save As dialog to prevent others from changing your game.
+
+"         Read the Shareware agreement by clicking the About button.
+
+"         There can only be one Man, and one Exit per level.
+
+"         The Man can push Boulders, Bombs and Nuts, but only into a Space.
+
+"         Uninstall Boulder by pressing the SHIFT key as you exit.
+
+"         You can use Drag & Drop to load a game. Just drop a game file onto the main dialog.
+
+"         A game file can be used as a command line argument to Boulder.exe
+
+
+
+
+See also:        Creatures
+         The Object of the Game
+         Entering the Level Editor
+
+Shareware Information
+
+Shareware is a way of rewarding the author of a software package which you enjoy using.
+
+Many authors limit the features, or cause the software to expire if the shareware fee is not paid. This is not the philosophy behind Boulder. The full package is there for you to enjoy, and if you feel moved to reward the author, then please do so.
+
+There is no "recommended donation"; a suggestion would be to send the smallest worthwhile banknote which your country produces, or whatever you feel is "right".
+
+The support shown by the Shareware Community will be appreciated in designing future versions of Boulder. In the pipeline are:
+
+"         Multi-Player support
+"         Joystick Support
+"         Network Support
+
+
+If you would like to show your appreciation, please write to:
+
+P.O. Box 1044
+Windsor, Victoria, 3181
+AUSTRALIA
+
+Or Email the author: mikeysoft@bigfoot.com
+
+You can also contact the author if you would like to report Bugs (!), or to suggest improvements or enhancements for future releases of Boulder, including new creatures which you would like to see. Please Email any interesting games which you create.
+
+Please feel free to distribute this software freely to your friends, or to post it on Web Pages, Bulletin Boards, etc. as long as the software remains unchanged.
+
+Boulders use of the Registry
+
+The Windows Registry is a database repository for information about a computers configuration. It is organised in a hierarchical structure, and is comprised of subtrees and their keys, hives, and value entries. It is designed as a replacement for .INI files, which were common in previous versions of Windows.
+
+Boulder uses the Registry for two purposes:
+
+1)       To store scoring information.
+
+2)       To tell Windows where the program is located, which icon to use for Boulder games, and to associate Boulder games with the Boulder program.
+
+
+When Boulder is run for the first time, it will add entries to the Registry related to point 2 above. As each game is loaded, played and designed, Boulder will add entries to the Registry related to point 1 above.
+
+If a player is removed, the information for that player will be removed from the registry, but since there is no way of telling if a game has been "removed", Boulder never removes entries related to a game.
+
+Be warned, the registry contains your entire computers configuration, and if you change it, you can cause you computer to become unusable.
+
+Boulder uses the following registry keys:
+
+HKEY_LOCAL_MACHINE/SOFTWARE/Mikeysoft/Boulder
+for scoring information.
+
+HKEY_CLASSES_ROOT\BOU
+HKEY_CLASSES_ROOT\BoulderFile
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths
+for Windows registration information.
+
+Note that if your computer dual-boots Windows 95 and Windows NT, that each operating system uses its own (incompatible) copy of the registry, and scores added under one operating system will not be visible under the other.
+
+
+See also:        Tips and Tricks
+         Uninstalling Boulder
+         Transferring Scores to another Computer
+
+Uninstalling Boulder
+
+Boulder uses the registry to store scoring information and to tell Windows where it is located, which icon to use for Boulder games, and to associate Boulder games with the Boulder program.
+
+To uninstall Boulder, you need to remove the registry entries, and to remove the 3 files which make up Boulder.
+
+
+To remove the registry entries:
+
+If you are sure that you want to remove Boulder from your computer permanently, press the SHIFT key as you click the Exit button on the main screen. Boulder will ask you if you want to uninstall. If you select Yes, all registry entries will be removed.
+
+
+To remove the files:
+
+Boulder consists of 3 files:
+Boulder.exe      (the main executable)
+Boulder.hlp      (the Help file)
+Boulder.cnt      (the Help contents file)
+
+You must remove these files manually if you want to remove Boulder from your computer. You can use the Windows Explorer, or a DOS command-line to do this. There are no .DLL or system files to worry about. The only other relevant files which may be on your computer are Boulder games which typically have the extension BOU.
+
+
+
+
+See also:        Tips and Tricks
+         Boulders use of the Registry
+         Transferring Scores to another Computer
+
+Transferring Scores to another Computer
+
+If you want to run Boulder on another computer, and want to transfer the scores from an existing computer, follow the steps below:
+
+1) On the source computer, run Regedit.
+
+2) Select Export Registry File from the Registry menu.
+
+3) In the Export Range box, select the Selected Branch radio button, and fill in:
+HKEY_LOCAL_MACHINE\SOFTWARE\Mikeysoft\Boulder
+as the branch name.
+
+4) Pick a file name to save the scoring information to.
+
+5) Transfer the file to the target computer using a floppy disk or network.
+
+6) On the target computer, run Regedit.
+
+7) Select Import Registry File from the Registry menu.
+
+8) Fill in the file name, and click Open.
+
+
+This procedure will work across operating systems. That is, you can transfer scores from Windows NT to Windows 95 and vice versa.
+
+Be warned, the registry contains your entire computers configuration, and if you change it, you can cause you computer to become unusable.
+
+
+
+
+See also:        Tips and Tricks
+         Boulders use of the Registry
+         Uninstalling Boulder
+
+Creatures
+
+
+{ { { { { { { { { { { { { { { { { { { { { { { {
+
+
+
+bm3.bmp     Space	bm4.bmp        Man	bm5.bmp  Diamond
+bm6.bmp      Emerald	bm7.bmp      Boulder	bm8.bmp      Dirt
+bm9.bmp         Stone	bm10.bmp       Brick	bm11.bmp       Mine
+bm12.bmp        Exit	bm13.bmp        Bug	bm14.bmp         Cheese
+bm15.bmp      Bomb	bm16.bmp        Nut	bm17.bmp         Key
+bm18.bmp         Door	bm19.bmp        Tank	bm20.bmp        Acid
+bm21.bmp        Yum-Yum	bm22.bmp     Magic Wall	bm23.bmp  Alien
+bm24.bmp       Sponge	bm25.bmp      Wheel	bm26.bmp       Invisible Wall
+See also:        Tips and Tricks
+         The Object of the Game
+         Entering the Level Editor
+
+Space
+bm3.bmp
+
+Space has no properties as such, except that the everything can move through it. A Boulder, Bomb or Nut can be pushed into Space.
+
+Man
+bm4.bmp
+
+The Man can walk through Space and Dirt, and pick up Diamonds, Emeralds, Keys and Mines. He can push Bombs, Boulders and Nuts. The man is killed when the time expires, is hit by a falling object, or is touched by a Tank, Bug, Yum-Yum or Alien.
+
+Diamond
+bm5.bmp
+
+A Diamond is worth 3 times as much as an Emerald. A Diamond will balance on Stone and Dirt, but not on Brick. A Diamond can be crushed by a Boulder. A falling Diamond will kill the Man.
+
+Emerald
+bm6.bmp
+
+An Emerald will balance on Stone and Dirt, but not on Brick. An Emerald will not be crushed by a Boulder. An Emerald can be created by exploding a Bug or a Yum-Yum, by dropping a Boulder on a Nut, or by dropping a Boulder through a Magic Wall. A falling Emerald will kill the Man.
+
+Boulder
+bm7.bmp
+
+A Boulder will balance on Stone and Dirt, but not on Brick. A falling Boulder will kill the Man, set off a Bomb, turn a Nut into an Emerald, crush a Diamond, or be absorbed by a Sponge.
+
+Dirt
+bm8.bmp
+
+Dirt will balance a Boulder, Nut, Diamond, Emerald or Bomb. Cheese can grow through Dirt, and the Man can walk through Dirt.
+
+Stone
+bm9.bmp
+
+Stone cannot be destroyed, and will balance a Boulder, Nut, Diamond, Emerald or Bomb.
+
+Brick
+bm10.bmp
+
+Brick can be destroyed by an explosion, and will not balance a Boulder, Nut, Diamond, Emerald or Bomb.
+
+Mine
+bm11.bmp
+
+A Mine does not fall, and can be collected by the Man. A Mine is triggered by holding the CTRL key for 2 seconds.
+
+Exit
+bm27.bmp bm12.bmp
+
+The Exit has two states; Open and Closed. The Exit will remain closed until enough Diamonds and Emeralds have been collected. Then it will open. The object of the game is to exit the level through an open Exit. The game will continue to run after the Man has exited, until the ESC key is pressed.
+
+Bug
+bm13.bmp
+
+A Bug is a wall-hugger. It will always try and keep a wall on its right-hand side. If there is no wall on that side, it will spin aimlessly. A Bug can be destroyed by coming in contact with Cheese, by being caught in an explosion, or by having a Boulder dropped on it. A Bug will turn into Emeralds when destroyed. A Bug will kill the Man if it touches him.
+
+Cheese
+bm14.bmp
+Cheese will drip at a rate determined by the Cheese Rate setting. Each drip will turn into Cheese when it hits something. A Drip will kill the Man if it falls on him. Cheese will destroy a Bug, Tank, Yum-Yum or Alien when they contact it. Cheese can only grow through Dirt and Space.
+
+Bomb
+bm15.bmp
+
+A Bomb will balance on Stone and Dirt, but not on Brick. A falling Bomb will explode when it hits something. A Bomb will be triggered by an adjacent explosion, leading to a chain reaction. A falling Bomb will kill the Man.
+
+Nut
+bm16.bmp
+
+A Nut will balance on Stone and Dirt, but not on Brick. A Nut will turn into an Emerald if a Boulder is dropped on it. A falling Nut will kill the man.
+
+Key
+bm17.bmp
+
+There a three types of Key; Red, Green and Blue. Each Key opens the respective door. So in order to walk through the red Door, the red Key must be held.
+
+Door
+bm18.bmp
+
+There are three types of Door; Red, Green and Blue. Each Door can be walked through only if the respective key is held. So in order to walk through the red Door, the red Key must be held.
+
+Tank
+bm19.bmp
+
+A Tank is a wall-hugger. It will always try and keep a wall on its left-hand side. If there is no wall on that side, it will spin aimlessly. A Tank can be destroyed by coming in contact with Cheese, by being caught in an explosion, or by having a Boulder dropped on it. A Tank will kill the Man if it touches him.
+
+KAcid
+bm20.bmp
+
+Acid will eat anything which is dropped into it. The Man will be killed if he walks into it.
+
+Magic Wall
+bm22.bmp
+
+The Magic wall is triggered by a Boulder, Diamond or Emerald falling onto it. It will then become active for the time set
+by the Magic Wall Time setting. During the time that it is active, any Boulder which falls onto it will turn into an Emerald, and any Diamonds and Emeralds which fall onto it will turn into Boulders. Once the Magic Wall Time expires, the Magic wall cannot be triggered again in that level.
+
+Yum-Yum
+bm21.bmp
+
+A Yum-Yum will move through Space, and will eat any Diamonds and Emeralds which it encounters. A Yum-Yum will continue in the same direction, until it hits something, and will then pick a new direction. A Yum-Yum will kill the Man if it runs into him, but will not kill the Man if it passes him in an adjacent square. A Yum-Yum can be destroyed by coming in contact with Cheese, by being caught in an explosion, or by having a Boulder dropped on it. A Yum-Yum will turn into Emeralds when destroyed.
+
+KAlien
+bm23.bmp
+
+An Alien will move through Space in the direction of the Man, but at a slower speed than the Man can run at. An Alien can be destroyed by coming in contact with Cheese, by being caught in an explosion, or by having a Boulder dropped on it. An Alien will kill the Man if it touches him. If a Wheel is currently spinning, an Alien will head in the direction of the Wheel in preference to the Man, and will not kill the Man if it comes into contact with him during this time.
+
+Sponge
+bm24.bmp
+
+A Sponge will absorb a Boulder which is dropped on it. If there is no obstruction below, the Boulder will fall out again. If there is an obstruction below, the Sponge will store the Boulder until the obstruction is removed.
+
+Wheel
+bm25.bmp
+
+A Wheel is triggered by the Man running into it. It will then continue to spin for the time set by the Wheel Time setting. During the time that the Wheel is spinning, all Aliens will be attracted to the Wheel rather than the Man. Only one Wheel can be spinning at a time, so triggering another Wheel will stop the first one spinning.
+
+KInvisible Wall
+bm26.bmp
+
+An Invisible Wall has all the properties of Brick, except that it cannot be seen.
+

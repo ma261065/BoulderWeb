@@ -1,3 +1,4 @@
+/* Base styles */
 body {
     background-color: #333;
     margin: 0;
@@ -5,97 +6,63 @@ body {
     font-family: Arial, sans-serif;
     color: white;
     text-align: center;
-    /* Prevent scrollbars at all costs */
     overflow: hidden;
     height: 100vh;
     width: 100vw;
-    /* Enhanced touch and selection prevention */
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
     -webkit-tap-highlight-color: transparent;
-    /* Prevent zoom on iOS */
     -webkit-text-size-adjust: 100%;
 }
 
 h1 {
     margin: 10px 0;
     font-size: 24px;
-    /* Prevent text selection on title */
     user-select: none;
     -webkit-user-select: none;
 }
 
+/* Game container */
 #game-container {
     margin: 0 auto;
     position: relative;
     width: 100%;
     height: 100vh;
-    /* Use flexbox to center canvas */
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
 }
 
+/* Canvas styles */
 canvas {
     display: block;
     background-color: black;
     border: 2px solid #777 !important;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-    
-    /* Prevent distortion */
     image-rendering: pixelated;
     image-rendering: -moz-crisp-edges;
     image-rendering: crisp-edges;
-    
-    /* Essential for hybrid input */
     touch-action: none;
     outline: none;
     user-select: none;
     -webkit-user-select: none;
-    
-    /* Allow canvas to be focusable for keyboard events */
     cursor: default;
 }
 
-/* Canvas focus state for keyboard users */
 canvas:focus {
-    border-color: #00ff00 !important;
-    box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+    /* Subtle grey focus state for accessibility */
+    border-color: #999 !important;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.7);
 }
 
-#info-panel {
-    width: 100%;
-    max-width: 800px;
-    margin: 5px auto;
-    display: flex;
-    justify-content: space-between;
-    background-color: #222;
-    padding: 5px;
-    border-radius: 5px;
-    box-sizing: border-box;
-    /* Prevent text selection in UI */
-    user-select: none;
-    -webkit-user-select: none;
-}
-
-#level-info, #diamonds-info, #time-info {
-    font-size: 16px;
-    padding: 0 5px;
-    font-weight: bold;
-}
-
-#controls {
-    margin-top: 10px;
-    color: #aaa;
-    font-size: 14px;
-    user-select: none;
-    -webkit-user-select: none;
-}
-
+/* Sound toggle positioned outside the flex flow */
 #sound-toggle {
-    margin-top: 5px;
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
     background-color: #555;
     border: none;
     color: white;
@@ -106,6 +73,7 @@ canvas:focus {
     -webkit-user-select: none;
     touch-action: manipulation;
     transition: background-color 0.2s ease;
+    z-index: 100;
 }
 
 #sound-toggle:hover {
@@ -116,10 +84,19 @@ canvas:focus {
     background-color: #444;
 }
 
+/* Controls and UI */
+#controls {
+    margin-top: 10px;
+    color: #aaa;
+    font-size: 14px;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
 /* Hybrid Input Manager UI Elements */
 #direction-indicator {
     position: fixed;
-    top: 20px;
+    top: 50px;
     left: 50%;
     transform: translateX(-50%);
     background: rgba(0, 0, 0, 0.8);
@@ -158,14 +135,13 @@ canvas:focus {
     transition: opacity 0.5s ease;
 }
 
-/* Legacy touch controls styling (kept for backward compatibility) */
+/* Legacy touch controls styling */
 #touch-controls {
     position: fixed;
     bottom: 150px;
     left: 20px;
     z-index: 100;
     pointer-events: none;
-    /* Hide by default - hybrid input will handle touch */
     display: none;
 }
 
@@ -200,7 +176,6 @@ canvas:focus {
     transition: background-color 0.1s ease;
 }
 
-/* Consolidated active and hover states */
 #dpad button:active,
 #dpad button.active,
 #dpad button.active-btn {
@@ -212,7 +187,6 @@ canvas:focus {
     background-color: rgba(255, 255, 255, 0.2) !important;
 }
 
-/* Fixed positioning that maintains consistent relationships */
 #btn-up {
     top: 0;
     left: calc(50% - 40px);
@@ -233,7 +207,6 @@ canvas:focus {
     left: 0;
 }
 
-/* Add a center gap */
 #dpad::after {
     content: '';
     position: absolute;
@@ -247,6 +220,7 @@ canvas:focus {
     pointer-events: none;
 }
 
+/* Restart button */
 #restart-button {
     position: fixed;
     left: 50%;
@@ -284,8 +258,8 @@ canvas:focus {
     animation: none;
 }
 
-/* Splash screen styling enhancements */
-#splash-screen {
+/* Splash screen styling */
+.splash-screen {
     position: fixed;
     top: 0;
     left: 0;
@@ -304,8 +278,10 @@ canvas:focus {
     -webkit-user-select: none;
 }
 
-#splash-screen h1 {
+.splash-title {
     color: #00ff00;
+    font-size: 48px;
+    margin: 0 0 20px 0;
     text-shadow: 0 0 20px #00ff00, 0 0 40px #00ff00;
     animation: glow 2s ease-in-out infinite alternate;
 }
@@ -315,7 +291,22 @@ canvas:focus {
     to { text-shadow: 0 0 30px #00ff00, 0 0 40px #00ff00; }
 }
 
-#splash-screen button {
+.splash-instructions {
+    text-align: center;
+    margin-bottom: 40px;
+    padding: 0 20px;
+}
+
+.splash-instructions p {
+    margin: 5px 0;
+    font-size: 18px;
+}
+
+.splash-instructions .small-text {
+    font-size: 16px;
+}
+
+.splash-start-button {
     background: linear-gradient(45deg, #4CAF50, #45a049);
     border: 2px solid #00ff00;
     color: white;
@@ -327,23 +318,37 @@ canvas:focus {
     transition: all 0.3s ease;
     user-select: none;
     -webkit-user-select: none;
+    padding: 15px 40px;
+    font-size: 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    touch-action: manipulation;
 }
 
-#splash-screen button:hover {
+.splash-start-button:hover {
     background: linear-gradient(45deg, #45a049, #4CAF50);
     box-shadow: 0 0 30px rgba(0, 255, 0, 0.5);
     transform: scale(1.05);
 }
 
-#splash-screen button:active {
+.splash-start-button:active {
     transform: scale(0.95);
     box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+}
+
+.version-text {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    font-size: 10px;
+    color: #888;
+    margin: 0;
 }
 
 /* Mobile-specific optimizations */
 @media (max-width: 768px) {
     body {
-        font-size: 16px; /* Prevent zoom on focus */
+        font-size: 16px;
     }
     
     #game-container {
@@ -371,20 +376,6 @@ canvas:focus {
         margin: 5px 0;
     }
     
-    #info-panel {
-        border-radius: 8px;
-        margin: 8px auto;
-        padding: 8px;
-        background-color: rgba(0, 0, 0, 0.8);
-        width: 95%;
-        max-width: none;
-    }
-    
-    #level-info, #diamonds-info, #time-info {
-        font-size: 14px;
-        font-weight: bold;
-    }
-    
     #sound-toggle {
         margin: 4px;
         padding: 6px 10px;
@@ -393,21 +384,28 @@ canvas:focus {
     }
     
     #controls {
-        display: none; /* Hide desktop controls text on mobile */
+        display: none;
     }
     
-    /* Mobile splash screen adjustments */
-    #splash-screen h1 {
+    .splash-title {
         font-size: 32px;
     }
     
-    #splash-screen button {
+    .splash-start-button {
         padding: 12px 30px;
         font-size: 18px;
     }
     
+    .splash-instructions p {
+        font-size: 16px;
+    }
+    
+    .splash-instructions .small-text {
+        font-size: 14px;
+    }
+    
     #direction-indicator {
-        top: 10px;
+        top: 40px;
         font-size: 14px;
         padding: 6px 12px;
     }
@@ -423,28 +421,21 @@ canvas:focus {
 /* Landscape mobile optimizations */
 @media (max-width: 768px) and (orientation: landscape) {
     h1 {
-        display: none; /* More space for game */
+        display: none;
     }
     
     canvas {
         height: 85vh !important;
     }
     
-    #info-panel {
-        font-size: 12px;
-        padding: 4px;
-        margin: 4px auto;
-    }
-    
-    #level-info, #diamonds-info, #time-info {
-        font-size: 12px;
-        padding: 0 3px;
-    }
-    
     #restart-button {
         top: 45%;
         padding: 10px 20px;
         font-size: 16px;
+    }
+    
+    #direction-indicator {
+        top: 30px;
     }
 }
 
@@ -472,7 +463,6 @@ canvas:focus {
         font-size: 20px;
     }
     
-    /* Adjust positions when smaller */
     #btn-up {
         top: 0;
         left: calc(50% - 30px);
@@ -503,7 +493,7 @@ canvas:focus {
     }
     
     #direction-indicator {
-        top: 5px;
+        top: 25px;
         font-size: 12px;
         padding: 4px 8px;
     }
@@ -518,7 +508,6 @@ canvas:focus {
 /* High DPI displays */
 @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
     canvas {
-        /* Ensure crisp rendering on retina displays */
         image-rendering: -webkit-optimize-contrast;
         image-rendering: crisp-edges;
     }
@@ -531,10 +520,10 @@ canvas:focus {
     -webkit-tap-highlight-color: transparent;
 }
 
-/* Focus visible for accessibility (keyboard navigation) */
+/* Focus visible for accessibility */
 button:focus-visible,
 canvas:focus-visible {
-    outline: 2px solid #00ff00;
+    outline: 2px solid #999;
     outline-offset: 2px;
 }
 
@@ -548,7 +537,7 @@ canvas, #direction-indicator, #controls-info {
     will-change: transform;
 }
 
-/* Print styles (hide game when printing) */
+/* Print styles */
 @media print {
     body {
         display: none;
