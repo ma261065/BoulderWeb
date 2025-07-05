@@ -201,6 +201,7 @@ class Renderer {
         };
         
         const spriteName = spriteNames[entityType];
+        
         if (spriteName && window.spriteManager && window.spriteManager.getSprite(spriteName)) {
             this.ctx.drawImage(window.spriteManager.getSprite(spriteName), x, y, this.TILE_SIZE, this.TILE_SIZE);
         } else if (fallbacks[entityType]) {
@@ -401,8 +402,8 @@ class Renderer {
                 if (entity && typeof entity.draw === 'function') {
                     // Use the entity's custom draw method (for animated player, etc.)
                     entity.draw(this.ctx, drawX, drawY, this.TILE_SIZE);
-                } else {
-                    // Fallback to generic drawing method
+                } else if (tileType !== ENTITY_TYPES.EMPTY) {
+                    // Fallback to generic drawing method ONLY for non-empty tiles that are not custom entities
                     this.drawEntity(tileType, drawX, drawY);
                 }
             }

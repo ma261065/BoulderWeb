@@ -45,28 +45,18 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM fully loaded');
-            
-            if (!window.gameInstance) {
-                window.gameInstance = new Game();
-            }
-            
-            window.gameInstance.isGameOver = true;
-            
-            if (window.gameInstance.gameLoopId) {
-                clearInterval(window.gameInstance.gameLoopId);
-                window.gameInstance.gameLoopId = null;
-            }
-            if (window.gameInstance.timerIntervalId) {
-                clearInterval(window.gameInstance.timerIntervalId);
-                window.gameInstance.timerIntervalId = null;
-            }
-            
             showSplashScreen();
         });
 
         function showSplashScreen() {
             console.log('Creating splash screen...');
             
+            // If a game instance exists, clean it up first
+            if (window.gameInstance && typeof window.gameInstance.cleanup === 'function') {
+                window.gameInstance.cleanup();
+                window.gameInstance = null;
+            }
+
             const splash = document.createElement('div');
             splash.id = 'splash-screen';
             splash.className = 'splash-screen';
@@ -107,41 +97,11 @@
                 console.log('Start button clicked, removing splash screen');
                 splash.remove();
                 
-                console.log('Starting new level');
-                if (window.gameInstance) {
-                    if (window.gameInstance.gameLoopId) {
-                        clearInterval(window.gameInstance.gameLoopId);
-                        window.gameInstance.gameLoopId = null;
-                    }
-                    if (window.gameInstance.timerIntervalId) {
-                        clearInterval(window.gameInstance.timerIntervalId);
-                        window.gameInstance.timerIntervalId = null;
-                    }
-                    
-                    const restartButton = document.getElementById('restart-button');
-                    if (restartButton) {
-                        restartButton.remove();
-                    }
-                    
-                    if (window.gameInstance.inputManager) {
-                        console.log("Resetting hybrid input state");
-                        window.gameInstance.inputManager.activate();
-                        
-                        if (window.gameInstance.inputManager.keysPressed) {
-                            window.gameInstance.inputManager.keysPressed.clear();
-                        }
-                        if (window.gameInstance.inputManager.keyQueue) {
-                            window.gameInstance.inputManager.keyQueue = [];
-                        }
-                    }
-                    
-                    window.gameInstance.inputManager = new HybridInputManager(window.gameInstance);
-                    
-                    window.gameInstance.isGameOver = false;
-                    window.gameInstance.startNewLevel(1);
-                    
-                    console.log("Game restarted - hybrid input manager:", window.gameInstance.inputManager);
+                console.log('Starting new game instance');
+                if (window.gameInstance && typeof window.gameInstance.cleanup === 'function') {
+                    window.gameInstance.cleanup();
                 }
+                window.gameInstance = new Game();
             };
             
             startButton.addEventListener('click', startGame);

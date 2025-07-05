@@ -20,23 +20,19 @@ class Boulder extends Entity {
             
             if (belowType === ENTITY_TYPES.EMPTY) {
                 // Fall into empty space
-                grid[this.y][this.x] = ENTITY_TYPES.EMPTY;
                 this.y++;
-                grid[this.y][this.x] = this.type;
                 this.falling = true;
                 this.fallStarted = true;
                 moved = true;
                 
             } else if (belowType === ENTITY_TYPES.DIAMOND && this.fallStarted) {
                 // Only squash diamond if we were already falling (not just pushed)
-                grid[this.y][this.x] = ENTITY_TYPES.EMPTY;
                 this.y++;
-                grid[this.y][this.x] = this.type;
                 moved = true;
                 
                 // Add effects for squashing diamond
                 effects.push({
-                    type: EFFECT_TYPES.REMOVE,
+                    type: EFFECT_TYPES.COLLECT, // Use COLLECT effect
                     x: this.x,
                     y: this.y
                 });
@@ -47,9 +43,7 @@ class Boulder extends Entity {
                 
             } else if (belowType === ENTITY_TYPES.PLAYER && this.fallStarted) {
                 // Only fall into player space if already falling
-                grid[this.y][this.x] = ENTITY_TYPES.EMPTY;
                 this.y++;
-                grid[this.y][this.x] = this.type;
                 this.falling = true;
                 moved = true;
             }
@@ -66,9 +60,7 @@ class Boulder extends Entity {
                 grid[this.y][this.x - 1] === ENTITY_TYPES.EMPTY && 
                 grid[this.y + 1][this.x - 1] === ENTITY_TYPES.EMPTY) {
                 
-                grid[this.y][this.x] = ENTITY_TYPES.EMPTY;
                 this.x--;
-                grid[this.y][this.x] = this.type;
                 this.fallStarted = true;
                 moved = true;
             }
@@ -78,9 +70,7 @@ class Boulder extends Entity {
                     grid[this.y][this.x + 1] === ENTITY_TYPES.EMPTY && 
                     grid[this.y + 1][this.x + 1] === ENTITY_TYPES.EMPTY) {
                 
-                grid[this.y][this.x] = ENTITY_TYPES.EMPTY;
                 this.x++;
-                grid[this.y][this.x] = this.type;
                 this.fallStarted = true;
                 moved = true;
             }

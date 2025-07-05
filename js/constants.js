@@ -2,7 +2,7 @@
 const TILE_SIZE = 32;
 const GRID_WIDTH = 64;
 const GRID_HEIGHT = 32;
-const GAME_VERSION = '250703.0615'; // Version number for the game
+const GAME_VERSION = '250706.0548'; // Version number for the game
 
 // Entity type enum (unchanged)
 const ENTITY_TYPES = {
@@ -72,7 +72,7 @@ const SPRITE_PATHS = {
 const GAME_SETTINGS = {
     gameUpdateInterval: 85, // Consistent frame rate for all entities and player (5 frames per second)
     timerUpdateInterval: 1000, // The one second level timer
-    initialTime: 30,
+    initialTime: 60,
     baseDiamondsNeeded: 10,
     diamondsIncrementPerLevel: 3,
     baseWallCount: 50,

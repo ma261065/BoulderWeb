@@ -20,9 +20,7 @@ class Diamond extends Entity {
             
             if (belowType === ENTITY_TYPES.EMPTY) {
                 // Fall into empty space
-                grid[this.y][this.x] = ENTITY_TYPES.EMPTY;
                 this.y++;
-                grid[this.y][this.x] = this.type;
                 this.falling = true;
                 this.fallStarted = true;
                 moved = true;
@@ -30,9 +28,7 @@ class Diamond extends Entity {
             } else if (belowType === ENTITY_TYPES.PLAYER && this.fallStarted) {
                 // Only fall into player space if already falling
                 // This prevents "instant death" when player moves under stationary diamond
-                grid[this.y][this.x] = ENTITY_TYPES.EMPTY;
                 this.y++;
-                grid[this.y][this.x] = this.type;
                 this.falling = true;
                 moved = true;
             }
@@ -49,9 +45,7 @@ class Diamond extends Entity {
                 grid[this.y][this.x - 1] === ENTITY_TYPES.EMPTY && 
                 grid[this.y + 1][this.x - 1] === ENTITY_TYPES.EMPTY) {
                 
-                grid[this.y][this.x] = ENTITY_TYPES.EMPTY;
                 this.x--;
-                grid[this.y][this.x] = this.type;
                 this.fallStarted = true; // Rolling also counts as starting to fall
                 moved = true;
             }
@@ -61,9 +55,7 @@ class Diamond extends Entity {
                     grid[this.y][this.x + 1] === ENTITY_TYPES.EMPTY && 
                     grid[this.y + 1][this.x + 1] === ENTITY_TYPES.EMPTY) {
                 
-                grid[this.y][this.x] = ENTITY_TYPES.EMPTY;
                 this.x++;
-                grid[this.y][this.x] = this.type;
                 this.fallStarted = true; // Rolling also counts as starting to fall
                 moved = true;
             }
