@@ -293,7 +293,7 @@ class Game {
                         // Push fails - player shows pushing animation but no sound or movement
                         this.player.setMovementDirection(direction, true); // true = pushing (even though no movement)
                         // Optional: Add a different sound for failed push
-                        // effects.push({ type: 'sound', sound: 'push_fail' }); // if you have this sound
+                        effects.push({ type: 'sound', sound: 'pushfail' });
                     }
                 }
             } else {

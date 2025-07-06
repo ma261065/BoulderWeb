@@ -2,7 +2,7 @@
 const TILE_SIZE = 32;
 const GRID_WIDTH = 64;
 const GRID_HEIGHT = 32;
-const GAME_VERSION = '250706.0548'; // Version number for the game
+const GAME_VERSION = '250706.1848'; // Version number for the game
 
 // Entity type enum (unchanged)
 const ENTITY_TYPES = {
@@ -23,6 +23,7 @@ const SOUND_PATHS = {
     pickup: 'sounds/pickup.wav',
     boulder: 'sounds/boulder.wav',
     push: 'sounds/push.wav',
+    pushfail: 'sounds/pushfail.wav',
     levelComplete: 'sounds/level_complete.wav',
     gameOver: 'sounds/game_over.wav',
     die: 'sounds/die.wav',
