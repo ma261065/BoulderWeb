@@ -35,6 +35,7 @@ const SPRITE_PATHS = {
     dirt: 'images/Dirt.bmp',
     boulder: 'images/Boulder.bmp',
     diamond: 'images/Diamond.bmp',
+    diamondsparkle: 'images/DiamondSparkle.bmp',
     player: 'images/Player.bmp',
     playerl1: 'images/PlayerL1.bmp',
     playerl2: 'images/PlayerL2.bmp',

@@ -1,6 +1,5 @@
 /**
- * Simplified HybridInputManager with Input Queuing
- * Captures all key taps in a queue + handles continuous held keys
+ * Fixed HybridInputManager with Continuous Touch Movement
  */
 class HybridInputManager {
     constructor(gameInstance) {
@@ -14,7 +13,9 @@ class HybridInputManager {
         // Current input state for continuous movement (checked by game loop)
         this.currentKey = null;
         this.currentMouseDirection = null;
+        this.currentTouchDirection = null; // NEW: Track continuous touch direction
         this.isMouseDown = false;
+        this.isTouchDown = false; // NEW: Track touch state
         
         // Device detection
         this.isTouchDevice = this.detectTouchDevice();
@@ -23,6 +24,7 @@ class HybridInputManager {
         this.touchStartX = 0;
         this.touchStartY = 0;
         this.minSwipeDistance = 30;
+        this.touchMoveThreshold = 20; // NEW: Threshold for continuous touch movement
         
         // Direction constants
         this.DIRECTIONS = {
@@ -74,8 +76,9 @@ class HybridInputManager {
         document.addEventListener('keydown', this.handleKeyDown.bind(this));
         document.addEventListener('keyup', this.handleKeyUp.bind(this));
         
-        // Touch - simple swipe detection
+        // Touch - ENHANCED: Support both discrete swipes AND continuous movement
         this.gameElement.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: false });
+        this.gameElement.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false }); // NEW
         this.gameElement.addEventListener('touchend', this.handleTouchEnd.bind(this), { passive: false });
         
         // Mouse - simple drag detection
@@ -90,14 +93,15 @@ class HybridInputManager {
         window.addEventListener('blur', () => {
             this.currentKey = null;
             this.currentMouseDirection = null;
+            this.currentTouchDirection = null; // NEW
             this.isMouseDown = false;
-            this.inputQueue = []; // Clear queue on focus loss
+            this.isTouchDown = false; // NEW
+            this.inputQueue = [];
         });
         
         this.gameElement.focus();
     }
 
-    // ENHANCED: Queue discrete key presses AND set for continuous movement
     handleKeyDown(event) {
         if (!this.isActive) return;
         
@@ -105,15 +109,11 @@ class HybridInputManager {
         if (direction) {
             event.preventDefault();
             
-            // Only queue if this is a NEW key press (not a repeat)
             if (this.currentKey !== direction) {
-                // For responsive game controls, only keep the most recent input
-                // Clear any existing queue and add the new input
                 this.inputQueue = [direction];
                 console.log(`Key queued: ${direction.name}, queue length: ${this.inputQueue.length}`);
             }
             
-            // Always set current key for continuous movement (handles held keys)
             this.currentKey = direction;
         }
     }
@@ -128,7 +128,7 @@ class HybridInputManager {
         }
     }
 
-    // SIMPLIFIED: Basic touch swipe
+    // ENHANCED: Touch start - initialize continuous tracking
     handleTouchStart(event) {
         if (!this.isActive) return;
         
@@ -136,14 +136,49 @@ class HybridInputManager {
         const touch = event.touches[0];
         this.touchStartX = touch.clientX;
         this.touchStartY = touch.clientY;
+        this.isTouchDown = true; // NEW: Track touch state
+        this.currentTouchDirection = null; // NEW: Reset direction
     }
 
+    // NEW: Touch move - continuous direction tracking (like mouse)
+    handleTouchMove(event) {
+        if (!this.isActive || !this.isTouchDown) return;
+        
+        event.preventDefault();
+        
+        const touch = event.touches[0];
+        const deltaX = touch.clientX - this.touchStartX;
+        const deltaY = touch.clientY - this.touchStartY;
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        
+        if (distance >= this.touchMoveThreshold) {
+            const newDirection = this.getSwipeDirection(deltaX, deltaY);
+            
+            // If direction changed, queue the new direction
+            if (this.currentTouchDirection !== newDirection) {
+                this.inputQueue = [newDirection];
+                console.log(`Touch direction changed: ${newDirection.name}`);
+            }
+            
+            this.currentTouchDirection = newDirection;
+            
+            // Reset reference point for continuous movement
+            this.touchStartX = touch.clientX;
+            this.touchStartY = touch.clientY;
+        }
+    }
+
+    // ENHANCED: Touch end - handle both discrete swipes and end continuous movement
     handleTouchEnd(event) {
         if (!this.isActive) return;
         
         event.preventDefault();
         
-        if (event.changedTouches.length > 0) {
+        this.isTouchDown = false; // NEW: Clear touch state
+        this.currentTouchDirection = null; // NEW: Clear continuous direction
+        
+        // If no continuous movement was detected, treat as discrete swipe
+        if (event.changedTouches.length > 0 && !this.currentTouchDirection) {
             const touch = event.changedTouches[0];
             const deltaX = touch.clientX - this.touchStartX;
             const deltaY = touch.clientY - this.touchStartY;
@@ -151,13 +186,12 @@ class HybridInputManager {
             
             if (distance >= this.minSwipeDistance) {
                 const direction = this.getSwipeDirection(deltaX, deltaY);
-                // Replace queue with most recent swipe (same as keyboard)
                 this.inputQueue = [direction];
+                console.log(`Discrete swipe: ${direction.name}`);
             }
         }
     }
 
-    // SIMPLIFIED: Basic mouse drag
     handleMouseDown(event) {
         if (!this.isActive) return;
         
@@ -180,7 +214,6 @@ class HybridInputManager {
         if (distance >= 20) {
             this.currentMouseDirection = this.getSwipeDirection(deltaX, deltaY);
             
-            // Reset reference point
             this.mouseStartX = event.clientX;
             this.mouseStartY = event.clientY;
         }
@@ -205,22 +238,18 @@ class HybridInputManager {
         }
     }
 
-    // NEW: Get next queued input (called by game loop)
     getNextQueuedInput() {
-        return this.inputQueue.shift(); // Returns undefined if queue is empty
+        return this.inputQueue.shift();
     }
 
-    // NEW: Check if there are queued inputs
     hasQueuedInputs() {
         return this.inputQueue.length > 0;
     }
 
-    // NEW: Clear the input queue
     clearQueue() {
         this.inputQueue = [];
     }
 
-    // SIMPLIFIED: Just send move to game
     sendMove(direction) {
         if (!this.game || !this.isActive || !direction) return;
         
@@ -261,12 +290,11 @@ class HybridInputManager {
         }
         
         const controlText = this.isTouchDevice 
-            ? '📱 TOUCH CONTROLS<br>Tap and swipe to move<br>👆👇👈👉<br><small>⚡ Enhanced responsiveness</small>'
+            ? '📱 TOUCH CONTROLS<br>Drag to move continuously<br>Or tap+swipe for single moves<br><small>⚡ Enhanced responsiveness</small>'
             : '⌨️ KEYBOARD CONTROLS<br>Arrow Keys or WASD<br>🖱️ Mouse drag also works<br><small>⚡ Enhanced responsiveness</small>';
         
         controlsInfo.innerHTML = controlText;
         
-        // Hide after 6 seconds
         setTimeout(() => {
             if (controlsInfo) {
                 controlsInfo.style.opacity = '0';
@@ -275,7 +303,6 @@ class HybridInputManager {
         }, 6000);
     }
 
-    // Public API
     activate() {
         this.isActive = true;
         this.gameElement.focus();
@@ -285,7 +312,9 @@ class HybridInputManager {
         this.isActive = false;
         this.currentKey = null;
         this.currentMouseDirection = null;
+        this.currentTouchDirection = null; // NEW
         this.isMouseDown = false;
+        this.isTouchDown = false; // NEW
         this.inputQueue = [];
     }
 
@@ -298,11 +327,11 @@ class HybridInputManager {
     }
 
     destroy() {
-        // Remove event listeners
         document.removeEventListener('keydown', this.handleKeyDown.bind(this));
         document.removeEventListener('keyup', this.handleKeyUp.bind(this));
         
         this.gameElement.removeEventListener('touchstart', this.handleTouchStart.bind(this));
+        this.gameElement.removeEventListener('touchmove', this.handleTouchMove.bind(this)); // NEW
         this.gameElement.removeEventListener('touchend', this.handleTouchEnd.bind(this));
         this.gameElement.removeEventListener('mousedown', this.handleMouseDown.bind(this));
         this.gameElement.removeEventListener('mouseup', this.handleMouseUp.bind(this));

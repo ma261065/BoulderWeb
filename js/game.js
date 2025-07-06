@@ -236,6 +236,7 @@ class Game {
     }
 
     // Process the player's movement based on input
+    // Updated processPlayerMove method with boulder push resistance
     processPlayerMove(deltaX, deltaY) {
         if (!this.player) return [];
 
@@ -260,18 +261,11 @@ class Game {
             this.player.setMovementDirection(direction);
             
         } else if (targetType === ENTITY_TYPES.DIAMOND) {
-            // FIX: Don't remove diamond until we're sure the move will succeed
             const diamondEntity = this.entities.get(`${newX},${newY}`);
             if (diamondEntity && diamondEntity.type === ENTITY_TYPES.DIAMOND) {
-                // Create atomic move+collect effect - processed together
-                effects.push({ type: 'sound', sound: 'diamond' });
-                effects.push({ 
-                    type: 'move_and_collect', 
-                    entity: this.player, 
-                    from: { x: this.player.x, y: this.player.y }, 
-                    to: { x: newX, y: newY },
-                    collectEntity: diamondEntity
-                });
+                effects.push({ type: 'sound', sound: 'pickup' });
+                effects.push({ type: 'move', entity: this.player, from: { x: this.player.x, y: this.player.y }, to: { x: newX, y: newY } });
+                effects.push({ type: 'collect', x: newX, y: newY });
                 this.player.setMovementDirection(direction);
             }
             
@@ -279,16 +273,34 @@ class Game {
             this.levelComplete();
             
         } else if (targetType === ENTITY_TYPES.BOULDER && deltaY === 0) {
+            // ENHANCED: Boulder pushing with resistance
             const pushX = newX + deltaX;
+            
+            // Check if there's space to push the boulder
             if (pushX >= 0 && pushX < this.grid[0].length && this.grid[newY][pushX] === ENTITY_TYPES.EMPTY) {
                 const boulder = this.entities.get(`${newX},${newY}`);
                 if (boulder) {
-                    effects.push({ type: 'sound', sound: 'push' });
-                    effects.push({ type: 'move', entity: boulder, from: { x: newX, y: newY }, to: { x: pushX, y: newY } });
-                    effects.push({ type: 'move', entity: this.player, from: { x: this.player.x, y: this.player.y }, to: { x: newX, y: newY } });
-                    this.player.setMovementDirection(direction, true);
+                    // Random 1 in 3 chance for push to succeed
+                    const pushSucceeds = Math.random() < 0.33; // 33% chance
+                    
+                    if (pushSucceeds) {
+                        // Push succeeds - move both boulder and player with sound
+                        effects.push({ type: 'sound', sound: 'push' });
+                        effects.push({ type: 'move', entity: boulder, from: { x: newX, y: newY }, to: { x: pushX, y: newY } });
+                        effects.push({ type: 'move', entity: this.player, from: { x: this.player.x, y: this.player.y }, to: { x: newX, y: newY } });
+                        this.player.setMovementDirection(direction, true); // true = pushing
+                    } else {
+                        // Push fails - player shows pushing animation but no sound or movement
+                        this.player.setMovementDirection(direction, true); // true = pushing (even though no movement)
+                        // Optional: Add a different sound for failed push
+                        // effects.push({ type: 'sound', sound: 'push_fail' }); // if you have this sound
+                    }
                 }
+            } else {
+                // Can't push boulder (no space behind it) - just show pushing animation
+                this.player.setMovementDirection(direction, true);
             }
+            
         } else {
             this.player.clearMovementDirection();
         }
@@ -527,12 +539,16 @@ class Game {
                     if (playerEffects.length > 0) somethingChanged = true;
                 }
                 
-                // Also process mouse input if no keyboard input was processed
-                if (this.inputManager.isMouseDown && this.inputManager.currentMouseDirection) {
-                    const direction = this.inputManager.currentMouseDirection;
-                    const playerEffects = this.processPlayerMove(direction.x, direction.y);
-                    this.processEffects(playerEffects);
-                    if (playerEffects.length > 0) somethingChanged = true;
+                // Also process mouse and touch input if no keyboard input was processed
+                if ((this.inputManager.isMouseDown && this.inputManager.currentMouseDirection) ||
+                    (this.inputManager.isTouchDown && this.inputManager.currentTouchDirection)) {
+                    
+                    const direction = this.inputManager.currentMouseDirection || this.inputManager.currentTouchDirection;
+                    if (!this.isGameOver && this.player && this.isValidMove(direction.x, direction.y)) {
+                        const playerEffects = this.processPlayerMove(direction.x, direction.y);
+                        this.processEffects(playerEffects);
+                        if (playerEffects.length > 0) somethingChanged = true;
+                    }
                 }
             }
             
